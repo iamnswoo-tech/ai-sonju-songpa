@@ -1,0 +1,2707 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AI 손주 - 건강 안부 챗봇</title>
+
+<!-- PWA 설정 -->
+
+<meta name="theme-color" content="#E8834A"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="AI 손주"/>
+
+
+<!-- 소셜 공유 미리보기 -->
+<meta property="og:title" content="AI 손주 - 건강 안부 챗봇"/>
+<meta property="og:description" content="식사 사진 한 장으로 영양 분석! 어르신 건강을 AI가 챙겨드립니다."/>
+<meta property="og:image" content="icon-512.png"/>
+<meta property="og:type" content="website"/>
+
+<!-- Supabase SDK (관리자 연동) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<!-- 카카오 없는 순수 PWA 버전 -->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Gowun+Dodum&display=swap');
+:root {
+  --warm-bg:#FFF8F0;--card:#FFF;--primary:#E8834A;
+  --primary-light:#FFF0E6;--primary-dark:#C96830;
+  --ai-bubble:#FFF3E8;--user-bubble:#4A90D9;
+  --text:#2C1F0E;--muted:#8B7355;--border:#F0E0CC;--green:#4CAF7A;
+  --red:#E53E3E;--blue:#3182CE;--purple:#7C3AED;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--warm-bg);min-height:100vh;display:flex;flex-direction:column;align-items:center;width:100%;overflow-x:hidden;}
+
+/* ── 헤더 ── */
+.header{width:100%;max-width:480px;background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;position:sticky;top:0;z-index:20;box-shadow:0 2px 12px rgba(0,0,0,0.06);}
+.header-inner{display:flex;align-items:center;gap:10px;}
+.avatar{width:44px;height:44px;background:linear-gradient(135deg,#FFB347,#E8834A);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.header-info h1{font-family:'Gowun Dodum',sans-serif;font-size:17px;color:var(--text);font-weight:400;}
+.header-info .sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.hdr-btns{margin-left:auto;display:flex;gap:6px;}
+.hdr-btn{width:36px;height:36px;border-radius:50%;border:none;background:var(--primary-light);cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;}
+.hdr-btn:hover{background:var(--primary);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── 약 복용 현황 바 ── */
+.med-bar{width:100%;max-width:480px;background:#EEF4FF;border-bottom:1px solid #BEE3F8;padding:10px 16px;display:none;}
+.med-bar.show{display:block;}
+.med-bar-title{font-size:12px;color:#2B6CB0;font-weight:500;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+.med-slots{display:flex;flex-direction:column;gap:6px;}
+.med-slot{background:#fff;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:10px;border:1px solid #BEE3F8;}
+.med-slot .slot-info{flex:1;}
+.med-slot .slot-time{font-size:11px;color:var(--muted);}
+.med-slot .slot-name{font-size:13px;color:var(--text);font-weight:500;}
+.med-slot .slot-pills{font-size:11px;color:var(--muted);}
+.take-btn{padding:6px 14px;border:none;border-radius:20px;font-size:12px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.take-btn.not-taken{background:#EBF8FF;color:#2B6CB0;border:1px solid #BEE3F8;}
+.take-btn.not-taken:hover{background:#2B6CB0;color:#fff;}
+.take-btn.taken{background:#E8F5E9;color:#2E7D32;cursor:default;}
+.take-btn.missed{background:#FFF5F5;color:var(--red);cursor:default;}
+.slot-badge{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.slot-badge.not-taken{background:#BEE3F8;}
+.slot-badge.taken{background:var(--green);}
+.slot-badge.missed{background:var(--red);}
+
+/* ── 스트릭 ── */
+.streak-bar{width:100%;max-width:480px;background:var(--primary-light);padding:8px 20px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--primary-dark);border-bottom:1px solid #F5D5B8;}
+.streak-dots{display:flex;gap:4px;margin-left:auto;}
+.streak-dot{width:18px;height:18px;border-radius:50%;background:#F5D5B8;display:flex;align-items:center;justify-content:center;font-size:10px;transition:background .3s;}
+.streak-dot.done{background:#FFB347;}
+
+/* ── 채팅 ── */
+.chat-area{width:100%;max-width:480px;flex:1;overflow-y:auto;scroll-behavior:smooth;padding:20px 16px 12px;display:flex;flex-direction:column;gap:16px;min-height:calc(100vh - 320px);}
+.bubble-row{display:flex;gap:10px;align-items:flex-end;}
+.bubble-row.user{flex-direction:row-reverse;}
+.b-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#FFB347,#E8834A);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.bubble{max-width:78%;padding:12px 16px;border-radius:18px;font-size:14px;line-height:1.75;font-family:'Gowun Dodum',sans-serif;color:var(--text);}
+.bubble.ai{background:var(--ai-bubble);border:1px solid #FFD9B8;border-bottom-left-radius:4px;}
+.bubble.user{background:var(--user-bubble);color:#fff;border-bottom-right-radius:4px;}
+.bubble img.meal-img{width:180px;height:135px;object-fit:cover;border-radius:10px;margin-top:8px;display:block;}
+.meta{font-size:10px;color:var(--muted);margin-top:4px;}
+.bubble.user .meta{color:rgba(255,255,255,.7);text-align:right;}
+.typing{display:flex;gap:4px;padding:14px 18px;align-items:center;}
+.typing span{width:7px;height:7px;background:var(--primary);border-radius:50%;animation:bounce 1.2s infinite;opacity:.6;}
+.typing span:nth-child(2){animation-delay:.2s;}
+.typing span:nth-child(3){animation-delay:.4s;}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+
+/* ── 영양 분석 카드 ── */
+.nutrition-card{background:#fff;border:1px solid var(--border);border-radius:18px;margin-top:10px;overflow:hidden;box-shadow:0 2px 12px rgba(232,131,74,.08);}
+.nc-header{background:linear-gradient(135deg,#E8834A,#FFB347);padding:14px 16px;display:flex;align-items:center;gap:10px;}
+.nc-header-icon{font-size:28px;}
+.nc-header-text h3{font-size:15px;color:#fff;font-weight:500;font-family:'Gowun Dodum',sans-serif;}
+.nc-header-text p{font-size:11px;color:rgba(255,255,255,.85);margin-top:2px;}
+
+/* 종합 점수 */
+.nc-score-row{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);}
+.nc-score-circle{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#FFB347,#E8834A);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}
+.nc-score-num{font-size:22px;font-weight:700;color:#fff;line-height:1;}
+.nc-score-unit{font-size:10px;color:rgba(255,255,255,.9);}
+.nc-score-info{flex:1;}
+.nc-score-label{font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px;}
+.nc-score-comment{font-size:12px;color:var(--muted);line-height:1.5;}
+
+/* 영양소 바 */
+.nc-nutrients{padding:12px 16px;border-bottom:1px solid var(--border);}
+.nc-section-title{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:10px;display:flex;align-items:center;gap:4px;}
+.nc-bar-row{margin-bottom:10px;}
+.nc-bar-label{display:flex;justify-content:space-between;margin-bottom:4px;}
+.nc-bar-name{font-size:13px;color:var(--text);}
+.nc-bar-value{font-size:12px;color:var(--muted);}
+.nc-bar-bg{background:#F5E8D8;border-radius:6px;height:8px;overflow:hidden;}
+.nc-bar-fill{height:100%;border-radius:6px;transition:width 1.2s ease;}
+.fill-good{background:linear-gradient(90deg,#4CAF7A,#81C784);}
+.fill-ok{background:linear-gradient(90deg,#FFB347,#E8834A);}
+.fill-low{background:linear-gradient(90deg,#90CAF9,#42A5F5);}
+.fill-high{background:linear-gradient(90deg,#EF9A9A,#E53E3E);}
+.nc-bar-status{font-size:10px;margin-top:2px;}
+.status-good{color:#4CAF7A;}
+.status-ok{color:#E8834A;}
+.status-low{color:#42A5F5;}
+.status-high{color:#E53E3E;}
+
+/* 칭찬·조언 */
+.nc-praise{padding:12px 16px;background:#FFF8F0;border-bottom:1px solid var(--border);}
+.nc-praise-text{font-size:14px;color:var(--text);line-height:1.7;font-family:'Gowun Dodum',sans-serif;}
+
+/* 추천 영양식 */
+.nc-recommend{padding:12px 16px;border-bottom:1px solid var(--border);}
+.nc-rec-list{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+.nc-rec-item{display:flex;align-items:flex-start;gap:10px;background:var(--warm-bg);border-radius:12px;padding:10px 12px;}
+.nc-rec-icon{font-size:22px;flex-shrink:0;}
+.nc-rec-info{}
+.nc-rec-name{font-size:13px;font-weight:500;color:var(--text);}
+.nc-rec-reason{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4;}
+
+/* 전문가 한마디 */
+.nc-expert{padding:12px 16px;background:#EEF4FF;}
+.nc-expert-header{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.nc-expert-badge{background:#2B6CB0;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;}
+.nc-expert-text{font-size:13px;color:#2B6CB0;line-height:1.6;font-family:'Gowun Dodum',sans-serif;}
+
+/* 기존 카드 */
+.notify-card{background:#E8F5E9;border:1px solid #A5D6A7;border-radius:14px;padding:12px 16px;margin-top:8px;font-size:13px;color:#2E7D32;line-height:1.6;}
+.med-remind-card{background:#EEF4FF;border:1px solid #BEE3F8;border-radius:14px;padding:12px 16px;margin-top:8px;font-size:13px;color:#2B6CB0;line-height:1.6;}
+
+/* ── 사진 패널 (바텀시트 오버레이) ── */
+.photo-panel-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);
+  z-index:60;display:none;align-items:flex-end;justify-content:center;
+}
+.photo-panel-overlay.open{display:flex;}
+.photo-panel{
+  width:100%;max-width:480px;
+  background:var(--card);
+  border-radius:20px 20px 0 0;
+  padding:0 16px 20px;
+  max-height:88vh;overflow-y:auto;
+  transform:translateY(100%);
+  transition:transform .32s cubic-bezier(.34,1.56,.64,1);
+}
+.photo-panel-overlay.open .photo-panel{transform:translateY(0);}
+.photo-panel-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 14px;}
+.panel-title{font-size:12px;color:var(--muted);margin-bottom:10px;}
+.panel-title strong{color:var(--primary);}
+.camera-btns{display:flex;gap:8px;margin-bottom:12px;}
+.cam-btn{flex:1;padding:12px 8px;border:1.5px solid var(--border);border-radius:12px;background:var(--warm-bg);cursor:pointer;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--text);text-align:center;transition:all .2s;}
+.cam-btn:hover{border-color:var(--primary);background:var(--primary-light);}
+.cam-btn .cam-icon{font-size:24px;display:block;margin-bottom:4px;}
+.cam-divider{text-align:center;font-size:11px;color:var(--muted);margin-bottom:12px;position:relative;}
+.cam-divider::before,.cam-divider::after{content:'';position:absolute;top:50%;width:40%;height:1px;background:var(--border);}
+.cam-divider::before{left:0;}.cam-divider::after{right:0;}
+.sample-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.sample-item{border-radius:10px;overflow:hidden;cursor:pointer;border:2px solid transparent;transition:all .2s;aspect-ratio:1;background:#f5f5f5;position:relative;}
+.sample-item img{width:100%;height:100%;object-fit:cover;display:block;}
+.sample-item .s-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.45);color:#fff;font-size:9px;text-align:center;padding:3px 2px;}
+.sample-item:hover{border-color:var(--primary);transform:scale(1.04);}
+.sample-item.selected{border-color:var(--primary);box-shadow:0 0 0 3px rgba(232,131,74,.25);}
+.preview-wrap{display:none;margin-top:10px;position:relative;width:fit-content;}
+.preview-wrap img{width:120px;height:90px;object-fit:cover;border-radius:10px;display:block;border:2px solid var(--primary);}
+.preview-del{position:absolute;top:-6px;right:-6px;width:20px;height:20px;background:var(--red);color:#fff;border-radius:50%;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;}
+.panel-btns{margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.panel-send{background:var(--primary);color:#fff;border:none;border-radius:20px;padding:9px 20px;font-size:13px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;}
+.panel-send:disabled{background:#ccc;cursor:not-allowed;}
+.panel-cancel{background:none;color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:9px 14px;font-size:13px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;}
+.sel-label{font-size:11px;color:var(--primary);}
+#realFileInput{display:none;}
+
+/* ── 설정 모달 ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{width:100%;max-width:480px;background:var(--card);border-radius:24px 24px 0 0;padding:24px 20px 80px;max-height:85dvh;max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.modal-header h2{font-size:17px;font-family:'Gowun Dodum',sans-serif;color:var(--text);}
+.modal-close{width:32px;height:32px;border-radius:50%;border:none;background:var(--warm-bg);cursor:pointer;font-size:18px;}
+
+/* 탭 */
+.modal-tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--warm-bg);border-radius:12px;padding:4px;}
+.modal-tab{flex:1;padding:8px;border:none;border-radius:10px;background:none;cursor:pointer;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--muted);transition:all .2s;}
+.modal-tab.active{background:var(--card);color:var(--primary);font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.1);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+.setting-section{margin-bottom:24px;}
+.setting-section h3{font-size:13px;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.setting-row{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.setting-row label{font-size:13px;color:var(--text);font-weight:500;}
+.setting-row input,.setting-row select{border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;font-size:14px;font-family:'Noto Sans KR',sans-serif;outline:none;color:var(--text);background:#fff;}
+.setting-row input:focus,.setting-row select:focus{border-color:var(--primary);}
+.setting-row .hint{font-size:11px;color:var(--muted);}
+.child-list,.med-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;}
+.child-item,.med-item{display:flex;align-items:center;gap:8px;background:var(--warm-bg);border-radius:10px;padding:10px 12px;}
+.child-item .child-info,.med-item .med-info{flex:1;}
+.child-item .child-name,.med-item .med-name{font-size:13px;font-weight:500;color:var(--text);}
+.child-item .child-phone,.med-item .med-detail{font-size:12px;color:var(--muted);}
+.del-btn{background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;padding:0 4px;}
+.add-row{display:flex;gap:6px;flex-wrap:wrap;}
+.add-row input,.add-row select{flex:1;min-width:80px;border:1.5px solid var(--border);border-radius:10px;padding:9px 10px;font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;color:var(--text);}
+.add-row input:focus,.add-row select:focus{border-color:var(--primary);}
+.add-btn{background:var(--primary);color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:13px;cursor:pointer;white-space:nowrap;font-family:'Noto Sans KR',sans-serif;}
+
+/* 토글 스위치 */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
+.toggle-row:last-child{border-bottom:none;}
+.toggle-label{font-size:13px;color:var(--text);}
+.toggle-desc{font-size:11px;color:var(--muted);margin-top:2px;}
+.toggle{position:relative;width:44px;height:24px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:#ccc;border-radius:24px;cursor:pointer;transition:.3s;}
+.toggle-slider::before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
+.toggle input:checked+.toggle-slider{background:var(--primary);}
+.toggle input:checked+.toggle-slider::before{transform:translateX(20px);}
+
+.save-btn{width:100%;background:var(--primary);color:#fff;border:none;border-radius:16px;padding:14px;font-size:15px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;margin-top:16px;margin-bottom:8px;font-weight:600;letter-spacing:.3px;}
+.save-btn:hover{background:var(--primary-dark);}
+
+/* ── 입력 ── */
+.input-area{width:100%;max-width:480px;background:var(--card);border-top:1px solid var(--border);padding:12px 16px 20px;position:sticky;bottom:0;box-sizing:border-box;}
+.quick-btns{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+.quick-btn{background:var(--primary-light);border:1px solid #F5C8A0;border-radius:20px;padding:5px 12px;font-size:12px;color:var(--primary-dark);cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s;white-space:nowrap;}
+.quick-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
+.input-row{display:flex;gap:8px;align-items:center;width:100%;box-sizing:border-box;}
+.text-input{flex:1;min-width:0;border:1.5px solid var(--border);border-radius:24px;padding:11px 18px;font-size:14px;font-family:'Gowun Dodum',sans-serif;outline:none;color:var(--text);background:var(--warm-bg);}
+.text-input:focus{border-color:var(--primary);}
+.img-btn,.send-btn{width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;transition:transform .15s;flex-shrink:0;}
+.img-btn{background:var(--primary-light);border:1.5px solid #F5C8A0;}
+.img-btn.active{background:var(--primary);}
+.send-btn{background:var(--primary);color:#fff;font-size:18px;}
+.img-btn:hover,.send-btn:hover{transform:scale(1.08);}
+.send-btn:disabled{background:#ccc;cursor:not-allowed;transform:none;}
+
+/* ── 토스트 ── */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--green);color:#fff;padding:12px 20px;border-radius:24px;font-size:13px;font-family:'Noto Sans KR',sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.2);transition:transform .4s cubic-bezier(.34,1.56,.64,1);z-index:100;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ── AI 프로바이더 선택 ── */
+.ai-provider-btn{
+  flex:1;padding:10px 4px;border:2px solid var(--border);
+  border-radius:12px;background:var(--card);cursor:pointer;
+  text-align:center;transition:all .2s;font-family:'Noto Sans KR',sans-serif;
+  line-height:1.4;
+}
+.ai-provider-btn:hover{border-color:var(--primary);background:var(--primary-light);}
+.ai-provider-btn.active-claude{border-color:#7C4DFF;background:#F3F0FF;}
+.ai-provider-btn.active-chatgpt{border-color:#10A37F;background:#F0FBF7;}
+.ai-provider-btn.active-gemini{border-color:#4285F4;background:#EEF4FF;}
+
+/* ── PWA 설치 배너 ── */
+.install-banner{
+  position:fixed;bottom:0;left:0;right:0;
+  transform:translateY(120px);
+  width:100%;max-width:100%;
+  background:var(--card);border-radius:16px 16px 0 0;
+  box-shadow:0 -4px 24px rgba(0,0,0,.12);
+  padding:14px 16px;z-index:80;
+  transition:transform .4s cubic-bezier(.34,1.56,.64,1);
+  border:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+}
+.install-banner.show{transform:translateY(0);}
+.install-icon{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#FFB347,#E8834A);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.install-info{flex:1;}
+.install-info h4{font-size:13px;font-weight:500;color:var(--text);margin-bottom:2px;}
+.install-info p{font-size:11px;color:var(--muted);}
+.install-btns{display:flex;flex-direction:column;gap:4px;}
+.install-yes{background:var(--primary);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;}
+.install-no{background:none;color:var(--muted);border:none;font-size:11px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+
+/* ── 공유 버튼 ── */
+.share-btn{
+  position:fixed;bottom:160px;right:16px;
+  width:44px;height:44px;border-radius:50%;
+  background:var(--primary);border:none;cursor:pointer;
+  box-shadow:0 3px 12px rgba(232,131,74,.4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;z-index:30;transition:transform .2s;color:#fff;
+}
+.share-btn:hover{transform:scale(1.1);}
+
+/* ── 온보딩 모달 ── */
+.onboard-overlay{
+  position:fixed;inset:0;
+  background:var(--card);
+  z-index:400;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:0 0 120px 0;
+}
+.onboard-overlay.hidden{display:none;}
+.onboard-sheet{
+  width:100%;max-width:480px;
+  background:var(--card);
+  padding:40px 24px 0;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+.onboard-logo{text-align:center;font-size:52px;margin-bottom:8px;}
+.onboard-title{text-align:center;font-family:'Gowun Dodum',sans-serif;font-size:22px;color:var(--text);margin-bottom:6px;}
+.onboard-sub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6;}
+.onboard-steps{display:flex;flex-direction:column;gap:12px;margin-bottom:0;}
+.onboard-step{display:flex;align-items:flex-start;gap:12px;background:var(--warm-bg);border-radius:12px;padding:12px 14px;}
+.step-num{width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.step-text{flex:1;}
+.step-text strong{font-size:13px;color:var(--text);display:block;margin-bottom:2px;}
+.step-text span{font-size:12px;color:var(--muted);}
+.onboard-start{
+  position:fixed;bottom:60px;left:50%;
+  transform:translateX(-50%);
+  width:calc(100% - 48px);max-width:432px;
+  background:var(--primary);color:#fff;
+  border:none;border-radius:16px;
+  padding:18px;font-size:17px;
+  font-family:'Gowun Dodum',sans-serif;
+  cursor:pointer;
+  z-index:500;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  box-shadow:0 4px 20px rgba(232,131,74,.4);
+}
+.onboard-start:active{opacity:.85;}
+.onboard-skip{
+  position:fixed;bottom:20px;left:50%;
+  transform:translateX(-50%);
+  width:calc(100% - 48px);max-width:432px;
+  background:none;color:var(--muted);
+  border:none;font-size:13px;
+  font-family:'Noto Sans KR',sans-serif;
+  cursor:pointer;padding:8px;
+  z-index:500;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  text-align:center;
+}
+
+/* ── 설치 가이드 모달 ── */
+.guide-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;align-items:flex-end;justify-content:center;}
+.guide-overlay.show{display:flex;}
+.guide-sheet{width:100%;max-width:480px;background:var(--card);border-radius:24px 24px 0 0;padding:24px 20px 40px;}
+.guide-title{font-size:16px;font-weight:500;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.guide-tabs{display:flex;gap:8px;margin-bottom:16px;}
+.guide-tab{flex:1;padding:8px;border:1.5px solid var(--border);border-radius:10px;background:none;cursor:pointer;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--muted);transition:all .2s;}
+.guide-tab.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.guide-steps{display:flex;flex-direction:column;gap:10px;}
+.guide-step{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--warm-bg);border-radius:10px;}
+.guide-step .g-num{width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
+.guide-step .g-text{font-size:13px;color:var(--text);line-height:1.5;}
+.guide-close{width:100%;margin-top:16px;background:var(--warm-bg);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:14px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;}
+
+/* ── AI 전화 팝업 ── */
+.call-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.85);
+  z-index:300;display:none;flex-direction:column;
+  align-items:center;justify-content:center;
+  touch-action:none;
+  -webkit-overflow-scrolling:touch;
+}
+.call-overlay.ringing,.call-overlay.active{display:flex;pointer-events:auto;}
+
+.call-screen{
+  width:100%;max-width:380px;
+  background:linear-gradient(180deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%);
+  border-radius:32px;padding:40px 24px 32px;
+  display:flex;flex-direction:column;align-items:center;
+  box-shadow:0 24px 80px rgba(0,0,0,.6);
+  position:relative;overflow:hidden;
+}
+.call-screen::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 30%,rgba(232,131,74,.15),transparent 60%);
+  pointer-events:none;
+}
+.call-status{font-size:13px;color:rgba(255,255,255,.6);margin-bottom:20px;letter-spacing:1px;}
+.call-avatar-wrap{position:relative;margin-bottom:20px;}
+.call-avatar{
+  width:100px;height:100px;border-radius:50%;
+  background:linear-gradient(135deg,#FFB347,#E8834A);
+  display:flex;align-items:center;justify-content:center;
+  font-size:48px;
+}
+.call-ring{
+  position:absolute;inset:-8px;border-radius:50%;
+  border:3px solid rgba(232,131,74,.4);
+  animation:ring 1.5s ease-out infinite;
+}
+.call-ring2{
+  position:absolute;inset:-18px;border-radius:50%;
+  border:2px solid rgba(232,131,74,.2);
+  animation:ring 1.5s ease-out infinite .4s;
+}
+@keyframes ring{0%{transform:scale(1);opacity:.8}100%{transform:scale(1.3);opacity:0}}
+
+.call-name{font-size:26px;font-weight:700;color:#fff;margin-bottom:6px;font-family:'Gowun Dodum',sans-serif;}
+.call-subtitle{font-size:14px;color:rgba(255,255,255,.6);margin-bottom:8px;}
+.call-timer{font-size:18px;color:rgba(255,255,255,.8);font-variant-numeric:tabular-nums;margin-bottom:32px;min-height:26px;}
+
+/* 음성 파형 */
+.call-wave{
+  display:flex;align-items:center;gap:4px;height:40px;
+  margin-bottom:28px;
+}
+.wave-bar{
+  width:4px;border-radius:2px;background:rgba(232,131,74,.7);
+  animation:wave 1s ease-in-out infinite;
+}
+.wave-bar:nth-child(1){height:8px;animation-delay:0s;}
+.wave-bar:nth-child(2){height:20px;animation-delay:.1s;}
+.wave-bar:nth-child(3){height:32px;animation-delay:.2s;}
+.wave-bar:nth-child(4){height:24px;animation-delay:.3s;}
+.wave-bar:nth-child(5){height:40px;animation-delay:.4s;}
+.wave-bar:nth-child(6){height:28px;animation-delay:.3s;}
+.wave-bar:nth-child(7){height:16px;animation-delay:.2s;}
+.wave-bar:nth-child(8){height:32px;animation-delay:.1s;}
+.wave-bar:nth-child(9){height:12px;animation-delay:0s;}
+.wave-bar.silent{animation:none;height:4px !important;opacity:.3;}
+@keyframes wave{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
+
+/* 자막 */
+.call-caption{
+  background:rgba(255,255,255,.1);border-radius:12px;
+  padding:12px 16px;margin-bottom:28px;width:100%;
+  min-height:52px;display:flex;align-items:center;justify-content:center;
+}
+.call-caption-text{
+  font-size:15px;color:#fff;text-align:center;
+  font-family:'Gowun Dodum',sans-serif;line-height:1.5;
+}
+
+/* 어르신 답변 표시 */
+.user-caption{
+  background:rgba(74,144,217,.2);border:1px solid rgba(74,144,217,.4);
+  border-radius:12px;padding:10px 16px;margin-bottom:20px;width:100%;
+  min-height:44px;display:none;align-items:center;
+}
+.user-caption.show{display:flex;}
+.user-caption-text{font-size:14px;color:rgba(255,255,255,.9);font-family:'Gowun Dodum',sans-serif;}
+.mic-indicator{width:10px;height:10px;border-radius:50%;background:#E53E3E;margin-right:8px;flex-shrink:0;animation:blink .8s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* 버튼 */
+.call-btns{display:flex;gap:20px;justify-content:center;}
+.call-btn{
+  width:70px;height:70px;border-radius:50%;border:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;position:relative;z-index:310;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:26px;transition:transform .15s,box-shadow .15s;
+  flex-direction:column;gap:2px;
+}
+.call-btn:active{transform:scale(.92);}
+.call-btn.answer{background:#4CAF7A;box-shadow:0 4px 20px rgba(76,175,122,.4);}
+.call-btn.hangup{background:#E53E3E;box-shadow:0 4px 20px rgba(229,62,62,.4);}
+.call-btn.mute{background:rgba(255,255,255,.15);}
+.call-btn.mute.muted{background:rgba(229,62,62,.3);}
+.call-btn-label{font-size:10px;color:rgba(255,255,255,.7);font-family:'Noto Sans KR',sans-serif;margin-top:4px;}
+
+/* 전화 테스트 버튼 */
+.test-call-btn{
+  position:fixed;bottom:216px;right:16px;
+  width:44px;height:44px;border-radius:50%;
+  background:var(--green);border:none;cursor:pointer;
+  box-shadow:0 3px 12px rgba(76,175,122,.4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;z-index:30;transition:transform .2s;
+}
+.test-call-btn:hover{transform:scale(1.1);}
+
+/* ── 약 알람 팝업 ── */
+.alarm-popup{position:fixed;top:80px;left:50%;transform:translateX(-50%) scale(.9);opacity:0;pointer-events:none;background:#fff;border-radius:20px;padding:20px 24px;box-shadow:0 8px 40px rgba(0,0,0,.2);z-index:90;width:320px;text-align:center;transition:all .3s cubic-bezier(.34,1.56,.64,1);border-top:4px solid var(--blue);}
+.alarm-popup.show{transform:translateX(-50%) scale(1);opacity:1;pointer-events:auto;}
+.alarm-icon{font-size:40px;margin-bottom:8px;}
+.alarm-title{font-size:16px;font-weight:500;color:var(--text);margin-bottom:4px;}
+.alarm-desc{font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5;}
+.alarm-btns{display:flex;gap:8px;}
+.alarm-take{flex:1;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:10px;font-size:14px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;}
+.alarm-skip{flex:1;background:var(--warm-bg);color:var(--muted);border:1px solid var(--border);border-radius:12px;padding:10px;font-size:14px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;}
+
+/* ── DB 연결 상태 배너 ── */
+.db-sync-bar{width:100%;max-width:480px;padding:7px 16px;display:flex;align-items:center;gap:8px;font-size:11px;transition:all .3s;}
+.db-sync-bar.connected{background:#E8F5E9;color:#2E7D32;border-bottom:1px solid #A5D6A7;}
+.db-sync-bar.syncing{background:#EEF4FF;color:#1E40AF;border-bottom:1px solid #BEE3F8;}
+.db-sync-bar.offline{background:var(--warm-bg);color:var(--muted);border-bottom:1px solid var(--border);}
+.db-sync-bar.error{background:#FFF5F5;color:#991B1B;border-bottom:1px solid #FCA5A5;}
+.db-sync-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.db-sync-bar.connected .db-sync-dot{background:#4CAF7A;}
+.db-sync-bar.syncing .db-sync-dot{background:#3B82F6;animation:pulse 1s infinite;}
+.db-sync-bar.offline .db-sync-dot{background:var(--muted);}
+.db-sync-bar.error .db-sync-dot{background:#EF4444;}
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div class="header">
+  <div class="header-inner">
+    <div class="avatar">🤖</div>
+    <div class="header-info">
+      <h1>AI 손주</h1>
+      <div class="sub" id="headerSub">건강 안부 챗봇</div>
+    </div>
+    <div class="hdr-btns">
+      <button class="hdr-btn" onclick="toggleMedBar()" title="약 복용 현황">💊</button>
+      <button class="hdr-btn" onclick="openModal()" title="설정">⚙️</button>
+    </div>
+  </div>
+</div>
+
+<!-- 약 복용 현황 바 -->
+<div class="med-bar" id="medBar">
+  <div class="med-bar-title">
+    <span>💊 오늘 약 복용 현황</span>
+    <span id="medProgress" style="color:var(--green)"></span>
+  </div>
+  <div class="med-slots" id="medSlots"></div>
+</div>
+
+<!-- DB 동기화 상태 배너 -->
+<div class="db-sync-bar offline" id="dbSyncBar">
+  <div class="db-sync-dot"></div>
+  <span id="dbSyncMsg">로컬 모드 (기관 미연결)</span>
+</div>
+
+<!-- 스트릭 -->
+<div class="streak-bar">
+  <span>🏅 이번 주 식사 미션</span>
+  <span id="streakText">0일 달성</span>
+  <div class="streak-dots" id="streakDots"></div>
+</div>
+
+<!-- 채팅 -->
+<div class="chat-area" id="chatArea"></div>
+
+<!-- 사진 패널 (바텀시트 오버레이) -->
+<div class="photo-panel-overlay" id="photoPanelOverlay" onclick="if(event.target===this)closePanel()">
+<div class="photo-panel" id="photoPanel">
+  <div class="photo-panel-handle"></div>
+  <div class="panel-title">📷 사진을 선택해 <strong>AI 영양 분석</strong>을 받아보세요</div>
+  <div class="camera-btns">
+    <div class="cam-btn" onclick="openCamera()"><span class="cam-icon">📸</span>카메라 촬영</div>
+    <div class="cam-btn" onclick="openGallery()"><span class="cam-icon">🖼️</span>갤러리 선택</div>
+  </div>
+  <input type="file" id="realFileInput" accept="image/*"/>
+  <div class="preview-wrap" id="previewWrap">
+    <img id="previewImg" src="" alt="미리보기"/>
+    <button class="preview-del" onclick="clearPreview()">✕</button>
+  </div>
+  <div class="cam-divider">또는 샘플 선택</div>
+  <div class="sample-grid" id="sampleGrid"></div>
+  <div class="panel-btns">
+    <button class="panel-send" id="panelSendBtn" onclick="sendPhoto()" disabled>이 사진 전송 📤</button>
+    <button class="panel-cancel" onclick="closePanel()">닫기</button>
+    <span class="sel-label" id="selLabel"></span>
+  </div>
+</div>
+</div>
+
+<!-- 입력 -->
+<div class="input-area">
+  <div class="quick-btns">
+    <button class="quick-btn" onclick="sendDirect('안녕하세요! 오늘 기분이 어떠세요?')">😊 안부 인사</button>
+    <button class="quick-btn" onclick="sendDirect('오늘 아침에 뭘 드셨어요?')">🌅 아침 확인</button>
+    <button class="quick-btn" onclick="sendDirect('건강 관리 조언을 해주세요')">💊 건강 조언</button>
+    <button class="quick-btn" onclick="sendDirect('약 먹었어요!')">💉 약 복용 확인</button>
+  </div>
+  <div class="input-row">
+    <button class="img-btn" id="imgBtn" onclick="togglePanel()">📷</button>
+    <input type="text" class="text-input" id="textInput" placeholder="말씀을 입력하세요..." onkeydown="if(event.key==='Enter')sendFromInput()"/>
+    <button class="send-btn" id="sendBtn" onclick="sendFromInput()">➤</button>
+  </div>
+</div>
+
+<!-- 설정 모달 -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>⚙️ 설정</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <!-- 탭 -->
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="switchTab('basic')">👴 기본</button>
+      <button class="modal-tab" onclick="switchTab('med')">💊 약 관리</button>
+      <button class="modal-tab" onclick="switchTab('notify')">📱 알림</button>
+      <button class="modal-tab" onclick="switchTab('ai')">🤖 AI</button>
+      <button class="modal-tab" onclick="switchTab('org')">🏢 기관</button>
+    </div>
+
+    <!-- 기본 탭 -->
+    <div class="tab-panel active" id="tab-basic">
+      <div class="setting-section">
+        <h3>👴 어르신 정보</h3>
+        <div class="setting-row">
+          <label>성함</label>
+          <input type="text" id="userName" placeholder="예: 김복순" maxlength="10"/>
+        </div>
+        <div class="setting-row">
+          <label>나이</label>
+          <input type="number" id="userAge" placeholder="예: 75" min="60" max="100"/>
+        </div>
+      </div>
+      <div class="setting-section">
+        <h3>👨‍👩‍👧 자녀 연락처</h3>
+        <div class="child-list" id="childList"></div>
+        <div class="add-row">
+          <input type="text" id="childName" placeholder="이름 (예: 큰딸)" maxlength="8"/>
+          <input type="tel" id="childPhone" placeholder="010-0000-0000" maxlength="13"/>
+          <button class="add-btn" onclick="addChild()">추가</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;">ℹ️ 식사·약 복용 알림이 자녀에게 자동 발송됩니다</div>
+      </div>
+
+      <button class="save-btn" onclick="saveSettings()">💾 설정 저장</button>
+    </div>
+
+    <!-- 약 관리 탭 -->
+    <div class="tab-panel" id="tab-med">
+      <div class="setting-section">
+        <h3>💊 복용 약 목록</h3>
+        <div class="med-list" id="medList"></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">+ 새 약 추가</div>
+        <div class="add-row" style="margin-bottom:8px;">
+          <input type="text" id="medName" placeholder="약 이름 (예: 혈압약)" style="flex:2;"/>
+          <input type="text" id="medDose" placeholder="용량 (예: 1정)" style="flex:1;"/>
+        </div>
+        <div class="add-row" style="margin-bottom:8px;">
+          <select id="medTime">
+            <option value="아침식후">아침 식후</option>
+            <option value="점심식후">점심 식후</option>
+            <option value="저녁식후">저녁 식후</option>
+            <option value="아침식전">아침 식전</option>
+            <option value="취침전">취침 전</option>
+          </select>
+          <input type="time" id="medAlarmTime" value="08:00"/>
+          <button class="add-btn" onclick="addMed()">추가</button>
+        </div>
+        <div class="add-row">
+          <input type="text" id="medNote" placeholder="메모 (예: 식사 30분 후 복용)" style="flex:1;"/>
+        </div>
+      </div>
+
+      <button class="save-btn" onclick="saveSettings()">💾 설정 저장</button>
+    </div>
+
+    <!-- 알림 탭 -->
+    <div class="tab-panel" id="tab-notify">
+      <div class="setting-section">
+        <h3>📱 자녀 알림 설정</h3>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">식사 사진 알림</div>
+            <div class="toggle-desc">식사 사진 전송 시 자녀에게 알림</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="notifyMeal" checked/><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">약 복용 완료 알림</div>
+            <div class="toggle-desc">약을 드셨을 때 자녀에게 알림</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="notifyMedTaken" checked/><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">약 미복용 알림</div>
+            <div class="toggle-desc">복용 시간 1시간 후 미복용 시 자녀에게 알림</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="notifyMedMissed" checked/><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">일일 건강 리포트</div>
+            <div class="toggle-desc">매일 저녁 하루 건강 요약을 자녀에게 발송</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="notifyReport"/><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+      <div class="setting-section">
+        <h3>⏰ 약 알람 설정</h3>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">앱 내 알람 팝업</div>
+            <div class="toggle-desc">약 복용 시간에 팝업으로 알림 (앱 열려있을 때)</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="alarmPopup" checked/><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">채팅으로 알림 메시지</div>
+            <div class="toggle-desc">AI 손주가 약 드실 시간을 채팅으로 알림</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="alarmChat" checked/><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+      <div class="setting-section">
+        <h3>📞 AI 전화 설정</h3>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;background:var(--primary-light);padding:8px 12px;border-radius:8px;">
+          AI 손주가 음성으로 전화를 걸어 약 복용·식사 여부를 확인합니다.<br>어르신이 말로 답하면 AI가 인식해요.<br><span style="font-size:11px;color:#888">※ 전화 기능은 기기 내장 음성(TTS)을 사용합니다. AI API 키와 무관하게 동작합니다.</span>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">약 복용 확인 전화</div>
+            <div class="toggle-desc">약 알람 시간에 AI가 전화로 "약 드셨나요?" 확인</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="callMed" checked/><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">아침 식사 확인 전화</div>
+            <div class="toggle-desc">매일 아침 8시에 AI가 전화로 식사 여부 확인</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="callMeal"/><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">저녁 안부 전화</div>
+            <div class="toggle-desc">매일 저녁 6시에 AI가 전화로 건강 안부 확인</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="callEvening"/><span class="toggle-slider"></span></label>
+        </div>
+        <div class="setting-row" style="margin-top:10px;">
+          <label>전화 목소리</label>
+          <select id="callVoice">
+            <option value="female">여성 (손녀 목소리)</option>
+            <option value="male">남성 (손자 목소리)</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label>말하는 속도</label>
+          <select id="callRate">
+            <option value="0.8">천천히 (어르신 추천)</option>
+            <option value="1.0">보통</option>
+            <option value="1.2">조금 빠르게</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="save-btn" onclick="saveSettings()">💾 설정 저장</button>
+    </div><!-- /tab-notify -->
+
+    <!-- AI 탭 -->
+    <div class="tab-panel" id="tab-ai">
+      <div class="setting-section">
+        <h3>🤖 AI 선택</h3>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">사용할 AI를 선택하고 해당 API 키를 입력하세요. 키가 없으면 데모 모드로 동작합니다.</div>
+
+        <!-- AI 선택 탭 -->
+        <div style="display:flex;gap:6px;margin-bottom:16px;" id="aiProviderTabs">
+          <button class="ai-provider-btn active" id="btn-claude" onclick="selectProvider('claude')">
+            <span style="font-size:16px;">🟣</span><br/>
+            <span style="font-size:11px;font-weight:500;">Claude</span><br/>
+            <span style="font-size:9px;color:#7C4DFF;">Anthropic</span>
+          </button>
+          <button class="ai-provider-btn" id="btn-chatgpt" onclick="selectProvider('chatgpt')">
+            <span style="font-size:16px;">🟢</span><br/>
+            <span style="font-size:11px;font-weight:500;">ChatGPT</span><br/>
+            <span style="font-size:9px;color:#10A37F;">OpenAI</span>
+          </button>
+          <button class="ai-provider-btn" id="btn-gemini" onclick="selectProvider('gemini')">
+            <span style="font-size:16px;">🔵</span><br/>
+            <span style="font-size:11px;font-weight:500;">Gemini</span><br/>
+            <span style="font-size:9px;color:#4285F4;">Google</span>
+          </button>
+        </div>
+
+        <!-- Claude 설정 -->
+        <div class="provider-panel" id="panel-claude">
+          <div class="provider-info-card" style="background:#F3F0FF;border:1px solid #C4B5FD;border-radius:10px;padding:10px 12px;margin-bottom:10px;">
+            <div style="font-size:12px;font-weight:500;color:#7C4DFF;margin-bottom:4px;">🟣 Claude (Anthropic)</div>
+            <div style="font-size:11px;color:#6D5DA8;">한국어 감성 답변 최고 수준 · 사진 분석 우수<br/>가입 시 $5 무료 크레딧 제공</div>
+          </div>
+          <div class="setting-row">
+            <label>Claude API 키</label>
+            <input type="password" id="claudeKey" placeholder="sk-ant-api03-..." oninput="updateAiStatusBadge()"/>
+            <span class="hint"><a href="https://console.anthropic.com" target="_blank" style="color:var(--primary)">무료 키 발급받기 →</a></span>
+          </div>
+        </div>
+
+        <!-- ChatGPT 설정 -->
+        <div class="provider-panel" id="panel-chatgpt" style="display:none;">
+          <div class="provider-info-card" style="background:#F0FBF7;border:1px solid #6EE7B7;border-radius:10px;padding:10px 12px;margin-bottom:10px;">
+            <div style="font-size:12px;font-weight:500;color:#10A37F;margin-bottom:4px;">🟢 ChatGPT (OpenAI)</div>
+            <div style="font-size:11px;color:#1A7A5A;">가장 널리 알려진 AI · 사진 분석 지원<br/>카드 등록 후 최소 $5 충전 필요</div>
+          </div>
+          <div class="setting-row">
+            <label>ChatGPT API 키</label>
+            <input type="password" id="chatgptKey" placeholder="sk-proj-..."/>
+            <span class="hint"><a href="https://platform.openai.com/api-keys" target="_blank" style="color:#10A37F;">키 발급받기 →</a></span>
+          </div>
+          <div class="setting-row">
+            <label>모델 선택</label>
+            <select id="chatgptModel">
+              <option value="gpt-4o-mini">GPT-4o mini (저렴·빠름, 사진 분석 가능)</option>
+              <option value="gpt-4o">GPT-4o (고성능, 사진 분석 우수)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Gemini 설정 -->
+        <div class="provider-panel" id="panel-gemini" style="display:none;">
+          <div class="provider-info-card" style="background:#EEF4FF;border:1px solid #93C5FD;border-radius:10px;padding:10px 12px;margin-bottom:10px;">
+            <div style="font-size:12px;font-weight:500;color:#4285F4;margin-bottom:4px;">🔵 Gemini (Google)</div>
+            <div style="font-size:11px;color:#1A56C4;">구글 계정만 있으면 무료로 시작 가능<br/>Google AI Studio에서 즉시 발급<br/><span style='color:#DC2626;font-size:11px;font-weight:600;'>⚠️ 무료 추천: 2.5 Flash 또는 1.5 Flash</span></div>
+          </div>
+          <div class="setting-row">
+            <label>Gemini API 키</label>
+            <input type="password" id="geminiKey" placeholder="AIza..." oninput="updateAiStatusBadge()"/>
+            <span class="hint"><a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#4285F4;">무료 키 발급받기 →</a></span>
+          </div>
+          <div class="setting-row">
+            <label>모델 선택</label>
+            <select id="geminiModel">
+              <option value="gemini-1.5-flash-latest">⭐ Gemini 1.5 Flash Latest (추천·무료)</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash (안정·무료)</option>
+              <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B (초경량·무료)</option>
+              <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro Latest (고성능)</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro (고성능·안정)</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (최신·유료)</option>
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash (빠름)</option>
+              <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp (실험)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 현재 상태 표시 -->
+        <div id="aiStatusBadge" style="margin-top:12px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:500;background:var(--warm-bg);border:1px solid var(--border);color:var(--muted);text-align:center;">
+          현재: 데모 모드 (API 키 없음)
+        </div>
+        <div style="margin-top:8px;padding:8px 12px;border-radius:8px;font-size:11px;background:#FFF3CD;border:1px solid #FFD700;color:#856404;line-height:1.5;">
+          ⚠️ <strong>사용 방법:</strong> 아래에서 AI를 선택 → API 키 입력 → <strong>💾 설정 저장</strong> 버튼 클릭<br>
+          저장 후 채팅·식사분석에 실제 AI가 동작합니다. <strong>저장 버튼을 반드시 눌러야 적용됩니다.</strong>
+        </div>
+      </div>
+
+      <button class="save-btn" onclick="saveSettings()">💾 설정 저장</button>
+    </div>
+
+    <!-- 🏢 기관 연결 탭 -->
+    <div class="tab-panel" id="tab-org">
+      <div class="setting-section">
+        <h3>🏢 기관 연결 설정</h3>
+        <div id="orgConnectStatus" style="margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:13px;background:#F5F5F5;color:var(--muted);border:1px solid var(--border);">
+          🔌 연결 안됨 (로컬 모드)
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;background:var(--primary-light);padding:10px 12px;border-radius:8px;line-height:1.6;">
+          기관 관리자에게 받은 연결 정보를 입력하세요.<br>
+          연결되면 관리자 설정이 자동 적용되고, 식사·약 기록이 실시간으로 전송됩니다.
+        </div>
+        <div class="setting-row">
+          <label>Supabase URL</label>
+          <input type="text" id="orgDbUrl" placeholder="https://xxxxx.supabase.co"/>
+          <span class="hint">기관 관리자에게 받은 URL</span>
+        </div>
+        <div class="setting-row">
+          <label>Supabase Anon Key</label>
+          <input type="password" id="orgDbKey" placeholder="eyJhbGci..."/>
+          <span class="hint">기관 관리자에게 받은 Key</span>
+        </div>
+        <div class="setting-row">
+          <label>내 사용자 ID</label>
+          <input type="text" id="orgUserId" placeholder="관리자에게 받은 ID"/>
+          <span class="hint">관리자가 등록해 준 고유 ID</span>
+        </div>
+        <button style="width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;margin-top:8px;" onclick="connectToOrg()">
+          🔌 기관 연결하기
+        </button>
+        <div style="margin-top:14px;padding:12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;font-size:12px;color:#166534;line-height:1.7;">
+          <strong>연결 후 자동 적용:</strong><br>
+          • 관리자가 설정한 약 복용 일정<br>
+          • 기관 공용 AI 엔진 적용<br>
+          • 식사·약 기록 → 관리자 대시보드 실시간 반영<br>
+          • 미접속·미식사 시 관리자·자녀 자동 알림
+        </div>
+      </div><!-- /tab-org -->
+      <button class="save-btn" onclick="saveSettings()">💾 설정 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 약 알람 팝업 -->
+<div class="alarm-popup" id="alarmPopup">
+  <div class="alarm-icon">💊</div>
+  <div class="alarm-title" id="alarmTitle">약 드실 시간이에요!</div>
+  <div class="alarm-desc" id="alarmDesc"></div>
+  <div class="alarm-btns">
+    <button class="alarm-take" onclick="markTaken()">✅ 지금 먹었어요</button>
+    <button class="alarm-skip" onclick="hideAlarm()">나중에</button>
+  </div>
+</div>
+
+<!-- ── 온보딩 (첫 방문 시) ── -->
+<div class="onboard-overlay" id="onboardOverlay">
+  <div class="onboard-sheet">
+    <div class="onboard-logo">🤖</div>
+    <div class="onboard-title">AI 손주</div>
+    <div class="onboard-sub">
+      식사 사진 한 장으로 영양 분석,<br/>
+      약 복용 알림, 자녀 안부 알림까지<br/>
+      <strong style="color:var(--primary)">카카오톡 없이 바로 사용</strong>할 수 있어요!
+    </div>
+    <div class="onboard-steps">
+      <div class="onboard-step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <strong>⚙️ 설정에서 어르신 정보 입력</strong>
+          <span>성함, 나이, 자녀 연락처, 약 정보를 등록해 주세요</span>
+        </div>
+      </div>
+      <div class="onboard-step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          <strong>📷 식사 사진 찍어 전송</strong>
+          <span>카메라 버튼으로 사진을 보내면 AI가 3초 안에 분석해요</span>
+        </div>
+      </div>
+      <div class="onboard-step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          <strong>💊 약 복용 시간에 알림 수신</strong>
+          <span>설정한 시간이 되면 자동으로 알림이 와요</span>
+        </div>
+      </div>
+      <div class="onboard-step">
+        <div class="step-num">4</div>
+        <div class="step-text">
+          <strong>📱 홈 화면에 추가하면 앱처럼!</strong>
+          <span>주소창 없이 앱 아이콘으로 바로 열 수 있어요</span>
+        </div>
+      </div>
+    </div>
+    <button class="onboard-start" id="startBtn" onclick="startApp()">시작하기 →</button>
+    <button class="onboard-skip" id="skipBtn" onclick="startApp()">이미 알고 있어요, 바로 시작</button>
+  </div>
+</div>
+
+<!-- ── 설치 가이드 모달 ── -->
+<div class="guide-overlay" id="guideOverlay" onclick="if(event.target===this)closeGuide()">
+  <div class="guide-sheet">
+    <div class="guide-title">📱 홈 화면에 앱으로 추가하기</div>
+    <div class="guide-tabs">
+      <button class="guide-tab active" id="tab-android" onclick="switchGuide('android')">🤖 안드로이드</button>
+      <button class="guide-tab" id="tab-ios" onclick="switchGuide('ios')">🍎 아이폰</button>
+    </div>
+    <div class="guide-steps" id="guide-android">
+      <div class="guide-step"><div class="g-num">1</div><div class="g-text">크롬 브라우저로 이 페이지를 열어주세요</div></div>
+      <div class="guide-step"><div class="g-num">2</div><div class="g-text">화면 하단 또는 주소창 오른쪽의 <strong>⋮ 메뉴</strong>를 탭해요</div></div>
+      <div class="guide-step"><div class="g-num">3</div><div class="g-text"><strong>"홈 화면에 추가"</strong> 또는 <strong>"앱 설치"</strong>를 선택해요</div></div>
+      <div class="guide-step"><div class="g-num">4</div><div class="g-text"><strong>"추가"</strong>를 탭하면 홈 화면에 AI 손주 아이콘이 생겨요 ✅</div></div>
+    </div>
+    <div class="guide-steps" id="guide-ios" style="display:none;">
+      <div class="guide-step"><div class="g-num">1</div><div class="g-text"><strong>사파리(Safari)</strong>로 이 페이지를 열어주세요</div></div>
+      <div class="guide-step"><div class="g-num">2</div><div class="g-text">하단 가운데 <strong>공유 버튼 (□↑)</strong>을 탭해요</div></div>
+      <div class="guide-step"><div class="g-num">3</div><div class="g-text">아래로 스크롤해서 <strong>"홈 화면에 추가"</strong>를 탭해요</div></div>
+      <div class="guide-step"><div class="g-num">4</div><div class="g-text">오른쪽 위 <strong>"추가"</strong>를 탭하면 완료 ✅</div></div>
+    </div>
+    <button class="guide-close" onclick="closeGuide()">닫기</button>
+  </div>
+</div>
+
+<!-- PWA 홈 화면 추가 배너 -->
+<div class="install-banner" id="installBanner">
+  <div class="install-icon">🤖</div>
+  <div class="install-info">
+    <h4>홈 화면에 앱으로 추가</h4>
+    <p>아이콘으로 바로 열 수 있어요!</p>
+  </div>
+  <div class="install-btns">
+    <button class="install-yes" onclick="installPWA()">설치하기</button>
+    <button class="install-no" onclick="hideInstallBanner()">닫기</button>
+  </div>
+</div>
+
+<!-- 공유 버튼 -->
+<button class="share-btn" onclick="shareApp()" title="링크 공유">🔗</button>
+
+<!-- ── AI 전화 팝업 ── -->
+<div class="call-overlay" id="callOverlay">
+  <div class="call-screen">
+    <div class="call-status" id="callStatus">수신 중...</div>
+    <div class="call-avatar-wrap">
+      <div class="call-avatar">🤖</div>
+      <div class="call-ring"></div>
+      <div class="call-ring2"></div>
+    </div>
+    <div class="call-name">AI 손주</div>
+    <div class="call-subtitle" id="callSubtitle">안부 전화</div>
+    <div class="call-timer" id="callTimer"></div>
+
+    <!-- 음성 파형 -->
+    <div class="call-wave" id="callWave">
+      <div class="wave-bar silent"></div>
+      <div class="wave-bar silent"></div>
+      <div class="wave-bar silent"></div>
+      <div class="wave-bar silent"></div>
+      <div class="wave-bar silent"></div>
+      <div class="wave-bar silent"></div>
+      <div class="wave-bar silent"></div>
+      <div class="wave-bar silent"></div>
+      <div class="wave-bar silent"></div>
+    </div>
+
+    <!-- AI 자막 -->
+    <div class="call-caption">
+      <div class="call-caption-text" id="callCaption">연결 중입니다...</div>
+    </div>
+
+    <!-- 어르신 답변 -->
+    <div class="user-caption" id="userCaption">
+      <div class="mic-indicator"></div>
+      <div class="user-caption-text" id="userCaptionText">듣고 있어요...</div>
+    </div>
+
+    <!-- 버튼 -->
+    <div class="call-btns" id="callBtns">
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <button class="call-btn answer" id="answerBtn"
+          onclick="answerCall()"
+          ontouchend="event.preventDefault();answerCall();">📞</button>
+        <span class="call-btn-label">받기</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <button class="call-btn hangup" id="hangupBtn"
+          onclick="hangupCall()"
+          ontouchend="event.preventDefault();hangupCall();">📵</button>
+        <span class="call-btn-label">끊기</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 전화 테스트 버튼 -->
+<button class="test-call-btn no-print" onclick="showCallMenu()" title="AI 전화 테스트">📞</button>
+
+<!-- 전화 종류 선택 메뉴 -->
+<div id="callMenu" style="position:fixed;bottom:270px;right:16px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:8px;box-shadow:0 8px 32px rgba(0,0,0,.15);z-index:40;display:none;flex-direction:column;gap:4px;min-width:160px;">
+  <div style="font-size:11px;color:var(--muted);padding:4px 8px;font-weight:500;">AI 전화 테스트</div>
+  <button onclick="startCall('med');hideCallMenu();" style="background:none;border:none;padding:10px 12px;text-align:left;cursor:pointer;border-radius:8px;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--text);">💊 약 복용 확인 전화</button>
+  <button onclick="startCall('meal');hideCallMenu();" style="background:none;border:none;padding:10px 12px;text-align:left;cursor:pointer;border-radius:8px;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--text);">🍚 식사 확인 전화</button>
+  <button onclick="startCall('evening');hideCallMenu();" style="background:none;border:none;padding:10px 12px;text-align:left;cursor:pointer;border-radius:8px;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--text);">🌙 저녁 안부 전화</button>
+  <button onclick="startCall('hello');hideCallMenu();" style="background:none;border:none;padding:10px 12px;text-align:left;cursor:pointer;border-radius:8px;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--text);">😊 일반 안부 전화</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── 샘플 식사 ──
+const SAMPLES = [
+  {label:'한식 밥상',desc:'쌀밥, 된장찌개, 고등어구이, 나물 3가지',img:'https://images.unsplash.com/photo-1547592180-85f173990554?w=200&q=80'},
+  {label:'죽·채소',desc:'팥죽, 시금치나물, 두부조림, 깍두기',img:'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=200&q=80'},
+  {label:'양식 아침',desc:'계란후라이, 토스트, 우유, 과일 샐러드',img:'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=200&q=80'},
+  {label:'국수·면',desc:'잔치국수, 김치, 계란지단',img:'https://images.unsplash.com/photo-1569050467447-ce54b3bbc37d?w=200&q=80'},
+  {label:'고기 반찬',desc:'불고기, 쌀밥, 미역국, 나물',img:'https://images.unsplash.com/photo-1544025162-d76694265947?w=200&q=80'},
+  {label:'채식 밥상',desc:'현미밥, 두부구이, 채소볶음, 된장국',img:'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200&q=80'},
+  {label:'과일·간식',desc:'사과, 바나나, 견과류, 따뜻한 우유',img:'https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?w=200&q=80'},
+  {label:'찌개 밥상',desc:'김치찌개, 쌀밥, 계란말이, 나물',img:'https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=200&q=80'},
+];
+
+const SYSTEM_PROMPT = `당신은 한국 어르신 전문 영양 컨설턴트이자 따뜻한 AI 손주입니다.
+
+[식사 사진 또는 식사 내용이 오면]
+반드시 아래 JSON 형식으로만 응답하세요.
+JSON 외 다른 텍스트, 설명, 마크다운(백틱 3개 등)은 절대 출력하지 마세요.
+응답은 반드시 { 로 시작하고 } 로 끝나야 합니다.
+
+{
+  "praise": "진심 어린 감성적 칭찬 2문장. 어르신이 뿌듯하게 느낄 수 있도록. 이모티콘 1개 포함.",
+  "score": 85,
+  "score_label": "매우 훌륭해요",
+  "score_comment": "전반적인 한 줄 평가",
+  "nutrients": [
+    {"name": "단백질", "level": 75, "status": "good", "status_text": "적당해요", "tip": "고등어에서 좋은 단백질을 드셨어요"},
+    {"name": "탄수화물", "level": 90, "status": "ok", "status_text": "조금 많아요", "tip": "밥 양을 조금 줄이시면 더 좋아요"},
+    {"name": "채소·식이섬유", "level": 60, "status": "low", "status_text": "조금 부족해요", "tip": "나물 한 가지 더 추가하시면 좋겠어요"},
+    {"name": "나트륨", "level": 70, "status": "ok", "status_text": "적당해요", "tip": "국물은 조금 남기시는 게 좋아요"},
+    {"name": "칼슘", "level": 50, "status": "low", "status_text": "부족해요", "tip": "두부나 멸치를 추가해 보세요"}
+  ],
+  "recommendations": [
+    {"icon": "🥚", "name": "삶은 계란 1개", "reason": "단백질 보충에 딱 좋아요. 소화도 잘 되세요."},
+    {"icon": "🥛", "name": "따뜻한 두유 한 컵", "reason": "칼슘과 단백질을 한번에 챙길 수 있어요."},
+    {"icon": "🥦", "name": "데친 브로콜리", "reason": "비타민C가 풍부해 몸의 면역력을 높여줘요."}
+  ],
+  "expert_comment": "영양 전문가 시각의 한마디. 어르신 눈높이에 맞게 쉬운 말로. 2~3문장.",
+  "question": "회상이나 감성을 자극하는 따뜻한 질문 1개"
+}
+
+status 값은 반드시 good/ok/low/high 중 하나.
+level은 0~100 사이 숫자.
+
+[약 복용 확인이 오면]
+JSON 없이 따뜻한 한국어로 칭찬과 응원 3~4문장.
+
+[일반 대화가 오면]
+JSON 없이 따뜻한 경어로 4~6문장 답변. 이모티콘 1~2개.`;
+
+const DEMO = {
+  meal:['와~ 이렇게 정성스러운 밥상이라니 오늘 아침부터 최고십니다! 😊\n골고루 잘 차려드셨네요, 몸에 좋은 것들로 가득해요.\n식후에 따뜻한 물 한 잔만 더 챙겨드세요!\n혹시 가장 좋아하시는 반찬은 뭐예요? 🥢',
+        '어머나, 이렇게 건강하게 드셨군요! 정말 대단하세요 😊\n영양이 골고루 들어있어서 몸이 든든하실 것 같아요.\n오늘처럼 잘 드시면 건강도 쑥쑥 좋아지실 거예요! 🍚'],
+  med:['약도 잘 챙겨드셨군요, 정말 대단하세요! 💊\n꾸준히 드시는 게 건강의 비결이에요.\n오늘도 건강하게 잘 지내세요! 😊',
+       '약 드셨군요, 참 잘 하셨어요! 😊\n이렇게 꼬박꼬박 챙겨드시니 정말 든든해요.\n앞으로도 빠지지 말고 잘 챙겨드세요 💪'],
+  greeting:['안녕하세요! 오늘도 밝게 웃으며 시작하셨죠? 😊\n저는 항상 여기 있으니까 편하게 말씀해 주세요!\n오늘 아침 식사는 맛있게 하셨나요?'],
+  morning:['오늘 아침 식사 어떻게 드셨어요? 😊\n따뜻하게 드셨기를 바라요!\n📷 버튼으로 사진 보내주시면 제가 분석해 드릴게요!'],
+  health:['건강을 위해서는 규칙적인 식사가 가장 중요해요 😊\n하루 세 끼 따뜻하게 드시고, 물도 자주 마셔주세요!\n가벼운 스트레칭도 혈액순환에 정말 좋답니다.'],
+  default:['말씀해 주셔서 감사해요 😊\n오늘도 건강하게 잘 지내고 계시죠?\n무슨 일이든 편하게 말씀해 주세요!'],
+};
+
+// ── 상태 ──
+let history=[], streak=parseInt(localStorage.getItem('streak')||'0');
+let isLoading=false, selectedSample=null, realImageB64=null, realImageUrl=null;
+let settings=JSON.parse(localStorage.getItem('ai_settings')||'{}');
+let medStatus={};  // {medId: 'taken'|'missed'|'not_taken'}
+let currentAlarmMed=null;
+let alarmTimers=[];
+
+// ── 초기화 ──
+window.onload=()=>{
+  renderStreak(); buildGrid(); loadSettings(); setupFileInput();
+  updateHeaderSub(); renderMedBar(); updateAiStatusBadge();
+  selectProvider(settings.provider||'claude', false);
+  startAlarmChecker();
+  // Supabase 자동 연결 (저장된 기관 정보가 있으면)
+  if(settings.orgDbUrl && settings.orgDbKey){
+    initOrgConnection(settings.orgDbUrl, settings.orgDbKey, settings.orgUserId);
+  }
+  const name=settings.userName?settings.userName+'님, ':'';
+  const medCount=(settings.meds||[]).length;
+  const isLinked=!!(settings.orgDbUrl);
+  setTimeout(()=>addAiBubble(
+    name+'안녕하세요! 저는 AI 손주예요 😊\n'+
+    '오늘 식사 사진을 보내주시면 영양 분석을 해드려요!\n'+
+    (medCount>0?`💊 오늘 복용할 약 ${medCount}가지가 등록되어 있어요. 상단 💊 버튼으로 확인해보세요!\n`:'')+
+    (isLinked?'🏢 기관 서버에 연결 중이에요...':'⚙️ 설정에서 자녀 연락처와 약 정보를 등록할 수 있어요.')
+  ),700);
+  // 5분마다 접속 기록 갱신
+  setInterval(updateLastSeen, 5*60*1000);
+
+  // 온보딩은 HTML 초기 상태(display:flex)로 항상 표시됨
+  // startApp() 호출 시 appRoot를 보이게 함
+};
+
+// ── 설정 ──
+function loadSettings(){settings=JSON.parse(localStorage.getItem('ai_settings')||'{}');}
+
+function updateHeaderSub(){
+  const name=settings.userName||'';
+  const children=(settings.children||[]).length;
+  const meds=(settings.meds||[]).length;
+  const sub=document.getElementById('headerSub');
+  let parts=[];
+  if(name) parts.push(name+'님');
+  if(children>0) parts.push('자녀 '+children+'명');
+  if(meds>0) parts.push('약 '+meds+'종');
+  sub.textContent=parts.length?parts.join(' · '):'건강 안부 챗봇 · ⚙️ 설정을 해주세요';
+}
+
+function openModal(){
+  document.getElementById('modalOverlay').classList.add('open');
+  const _ib=document.getElementById('installBanner'); if(_ib) _ib.style.display='none';
+  document.getElementById('userName').value=settings.userName||'';
+  document.getElementById('userAge').value=settings.userAge||'';
+  // AI 키 로드
+  if(document.getElementById('claudeKey')) document.getElementById('claudeKey').value=settings.claudeKey||'';
+  document.getElementById('chatgptKey').value=settings.chatgptKey||'';
+  if(document.getElementById('geminiKey')) document.getElementById('geminiKey').value=settings.geminiKey||'';
+  if(document.getElementById('chatgptModel')) document.getElementById('chatgptModel').value=settings.chatgptModel||'gpt-4o-mini';
+  if(document.getElementById('geminiModel')){
+    // 만료된 preview 모델만 최신으로 마이그레이션 (그 외 저장값은 그대로 유지)
+    const _expired = [
+      'gemini-2.5-flash-preview-04-17', 'gemini-2.5-pro-preview-03-25',
+      'gemini-pro', 'gemini-2.0-flash-lite'
+    ];
+    const _saved = settings.geminiModel || 'gemini-1.5-flash-latest';
+    const _use = _expired.includes(_saved) ? 'gemini-1.5-flash-latest' : _saved;
+    // select에 해당 option이 없으면 기본값 사용
+    const _sel = document.getElementById('geminiModel');
+    const _hasOption = Array.from(_sel.options).some(o => o.value === _use);
+    _sel.value = _hasOption ? _use : 'gemini-1.5-flash-latest';
+  }
+  // 현재 선택된 프로바이더 표시
+  selectProvider(settings.provider||'claude', false);
+  updateAiStatusBadge();
+  // 알림 토글
+  const n=settings.notify||{};
+  document.getElementById('notifyMeal').checked=n.meal!==false;
+  document.getElementById('notifyMedTaken').checked=n.medTaken!==false;
+  document.getElementById('notifyMedMissed').checked=n.medMissed!==false;
+  document.getElementById('notifyReport').checked=!!n.report;
+  document.getElementById('alarmPopup').checked=n.alarmPopup!==false;
+  document.getElementById('alarmChat').checked=n.alarmChat!==false;
+  // 전화 설정 로드
+  if(document.getElementById('callVoice')) document.getElementById('callVoice').value=settings.callVoice||'female';
+  if(document.getElementById('callRate'))  document.getElementById('callRate').value=settings.callRate||'0.8';
+  const n2=settings.notify||{};
+  if(document.getElementById('callMed'))     document.getElementById('callMed').checked=n2.callMed!==false;
+  if(document.getElementById('callMeal'))    document.getElementById('callMeal').checked=!!n2.callMeal;
+  if(document.getElementById('callEvening'))document.getElementById('callEvening').checked=!!n2.callEvening;
+  // 기관 연결 탭 복원
+  if(document.getElementById('orgDbUrl'))  document.getElementById('orgDbUrl').value=settings.orgDbUrl||'';
+  if(document.getElementById('orgDbKey'))  document.getElementById('orgDbKey').value=settings.orgDbKey||'';
+  if(document.getElementById('orgUserId')) document.getElementById('orgUserId').value=settings.orgUserId||'';
+  updateOrgConnectStatus(USE_DB);
+  renderChildList(); renderMedList();
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');document.body.style.overflow='';const _ib=document.getElementById('installBanner');if(_ib)_ib.style.display='';}
+
+function switchTab(tab){
+  document.querySelectorAll('.modal-tab').forEach((t,i)=>{
+    const tabs=['basic','med','notify','ai','org'];
+    t.classList.toggle('active',tabs[i]===tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+}
+
+function saveSettings(){
+  settings.userName=document.getElementById('userName').value.trim();
+  settings.userAge=document.getElementById('userAge').value.trim();
+  settings.provider=settings.provider||'claude';
+  // 빈 값으로 기존 키를 덮어쓰지 않도록 처리
+  const newClaudeKey  = document.getElementById('claudeKey')  ? document.getElementById('claudeKey').value.trim()  : '';
+  const newChatgptKey = document.getElementById('chatgptKey') ? document.getElementById('chatgptKey').value.trim() : '';
+  const newGeminiKey  = document.getElementById('geminiKey')  ? document.getElementById('geminiKey').value.trim()  : '';
+  if(newClaudeKey)  settings.claudeKey  = newClaudeKey;
+  if(newChatgptKey) settings.chatgptKey = newChatgptKey;
+  if(newGeminiKey)  settings.geminiKey  = newGeminiKey;
+  // 모델 설정
+  const chatgptModelEl = document.getElementById('chatgptModel');
+  const geminiModelEl  = document.getElementById('geminiModel');
+  if(chatgptModelEl) settings.chatgptModel = chatgptModelEl.value;
+  if(geminiModelEl && geminiModelEl.value){
+    settings.geminiModel = geminiModelEl.value;
+  }
+  const keyMap={claude:settings.claudeKey||'', chatgpt:settings.chatgptKey||'', gemini:settings.geminiKey||''};
+  settings.apiKey=keyMap[settings.provider]||'';
+  // 전화 설정
+  settings.callVoice=document.getElementById('callVoice').value;
+  settings.callRate=document.getElementById('callRate').value;
+  settings.notify={
+    meal:document.getElementById('notifyMeal').checked,
+    medTaken:document.getElementById('notifyMedTaken').checked,
+    medMissed:document.getElementById('notifyMedMissed').checked,
+    report:document.getElementById('notifyReport').checked,
+    alarmPopup:document.getElementById('alarmPopup').checked,
+    alarmChat:document.getElementById('alarmChat').checked,
+    callMed:document.getElementById('callMed').checked,
+    callMeal:document.getElementById('callMeal').checked,
+    callEvening:document.getElementById('callEvening').checked,
+  };
+  // 기관 연결 저장
+  const newUrl=document.getElementById('orgDbUrl').value.trim();
+  const newKey=document.getElementById('orgDbKey').value.trim();
+  const newId =document.getElementById('orgUserId').value.trim();
+  settings.orgDbUrl=newUrl;
+  settings.orgDbKey=newKey;
+  settings.orgUserId=newId;
+  localStorage.setItem('ai_settings',JSON.stringify(settings));
+  updateHeaderSub(); updateAiStatusBadge(); renderMedBar(); closeModal();
+  startAlarmChecker();
+  // DB URL·Key가 새로 입력됐으면 즉시 연결 시도
+  if(newUrl && newKey && !USE_DB) initOrgConnection(newUrl, newKey, newId);
+  // 저장 후 API 키 상태 토스트
+  const savedKey = {claude:settings.claudeKey,chatgpt:settings.chatgptKey,gemini:settings.geminiKey}[settings.provider||'claude']||'';
+  const provLabel = {claude:'Claude',chatgpt:'ChatGPT',gemini:'Gemini'}[settings.provider||'claude'];
+  showToast(savedKey ? '✅ '+provLabel+' API 연결 완료! 이제 실제 AI가 답변합니다 🤖' : '💾 설정 저장됨 (API 키 없음 — 데모 모드)');
+}
+
+// ── 자녀 관리 ──
+function renderChildList(){
+  const list=document.getElementById('childList');
+  const children=settings.children||[];
+  list.innerHTML=children.length
+    ?children.map((c,i)=>`<div class="child-item"><div class="child-info"><div class="child-name">👤 ${esc(c.name)}</div><div class="child-phone">📱 ${esc(c.phone)}</div></div><button class="del-btn" onclick="removeChild(${i})">🗑️</button></div>`).join('')
+    :'<div style="font-size:12px;color:var(--muted);padding:8px 0">아직 등록된 자녀가 없습니다</div>';
+}
+function addChild(){
+  const name=document.getElementById('childName').value.trim();
+  const phone=document.getElementById('childPhone').value.trim();
+  if(!name||!phone){showToast('이름과 연락처를 모두 입력해주세요');return;}
+  if(!settings.children)settings.children=[];
+  settings.children.push({name,phone});
+  document.getElementById('childName').value='';
+  document.getElementById('childPhone').value='';
+  renderChildList(); showToast('✅ '+name+' 등록 완료!');
+}
+function removeChild(i){settings.children.splice(i,1);renderChildList();}
+
+// ── 약 관리 ──
+function renderMedList(){
+  const list=document.getElementById('medList');
+  const meds=settings.meds||[];
+  list.innerHTML=meds.length
+    ?meds.map((m,i)=>`<div class="med-item"><div class="med-info"><div class="med-name">💊 ${esc(m.name)}</div><div class="med-detail">${esc(m.time)} ${esc(m.alarmTime)} · ${esc(m.dose)}${m.note?' · '+esc(m.note):''}</div></div><button class="del-btn" onclick="removeMed(${i})">🗑️</button></div>`).join('')
+    :'<div style="font-size:12px;color:var(--muted);padding:8px 0">등록된 약이 없습니다</div>';
+}
+function addMed(){
+  const name=document.getElementById('medName').value.trim();
+  const dose=document.getElementById('medDose').value.trim();
+  const time=document.getElementById('medTime').value;
+  const alarmTime=document.getElementById('medAlarmTime').value;
+  const note=document.getElementById('medNote').value.trim();
+  if(!name||!dose){showToast('약 이름과 용량을 입력해주세요');return;}
+  if(!settings.meds)settings.meds=[];
+  settings.meds.push({id:Date.now(),name,dose,time,alarmTime,note});
+  document.getElementById('medName').value='';
+  document.getElementById('medDose').value='';
+  document.getElementById('medNote').value='';
+  renderMedList(); showToast('✅ '+name+' 등록 완료!');
+}
+function removeMed(i){settings.meds.splice(i,1);renderMedList();}
+
+// ── 약 복용 현황 바 ──
+function toggleMedBar(){
+  const bar=document.getElementById('medBar');
+  bar.classList.toggle('show');
+  renderMedBar();
+}
+
+function renderMedBar(){
+  const meds=settings.meds||[];
+  const bar=document.getElementById('medBar');
+  if(meds.length===0){bar.classList.remove('show');return;}
+
+  const now=new Date();
+  const todayKey=now.toDateString();
+
+  // 오늘 상태 초기화
+  if(!medStatus[todayKey])medStatus[todayKey]={};
+  const todayStatus=medStatus[todayKey];
+
+  let takenCount=0;
+  const slots=meds.map(m=>{
+    const status=todayStatus[m.id]||'not_taken';
+    if(status==='taken')takenCount++;
+    // 시간 지났는지 확인
+    const [h,min]=m.alarmTime.split(':').map(Number);
+    const alarmDt=new Date(); alarmDt.setHours(h,min,0,0);
+    const isPast=now>alarmDt;
+    const displayStatus=status==='not_taken'&&isPast?'not_taken':status;
+    return {m,status:displayStatus};
+  });
+
+  document.getElementById('medProgress').textContent=`${takenCount}/${meds.length} 완료`;
+
+  document.getElementById('medSlots').innerHTML=slots.map(({m,status})=>{
+    const btnText=status==='taken'?'✅ 복용완료':status==='missed'?'❌ 미복용':'💊 먹었어요';
+    const btnClass=`take-btn ${status}`;
+    const disabled=status==='taken'||status==='missed'?'disabled':'';
+    return `<div class="med-slot">
+      <div class="slot-badge ${status}"></div>
+      <div class="slot-info">
+        <div class="slot-time">${esc(m.time)} ${esc(m.alarmTime)}</div>
+        <div class="slot-name">${esc(m.name)}</div>
+        <div class="slot-pills">${esc(m.dose)}${m.note?' · '+esc(m.note):''}</div>
+      </div>
+      <button class="${btnClass}" onclick="takeMedFromBar('${m.id}')" ${disabled}>${btnText}</button>
+    </div>`;
+  }).join('');
+}
+
+function takeMedFromBar(medId){
+  const todayKey=new Date().toDateString();
+  if(!medStatus[todayKey])medStatus[todayKey]={};
+  medStatus[todayKey][medId]='taken';
+  const med=(settings.meds||[]).find(m=>String(m.id)===String(medId));
+  renderMedBar();
+  if(med){
+    addAiBubble(`${esc(med.name)} 드셨군요, 정말 잘 하셨어요! 💊\n꾸준히 챙겨드시는 모습이 정말 대견해요.\n건강을 위한 작은 실천이 쌓여서 큰 힘이 된답니다 😊`);
+    // DB 저장 (기관 연결 시)
+    if(USE_DB) saveMedToDB(medId, med.name);
+    // 자녀 알림
+    const n=settings.notify||{};
+    if(n.medTaken){
+      const children=settings.children||[];
+      if(children.length>0){
+        const notify=children.map(c=>c.name).join(', ')+'께 알림: "'+
+          (settings.userName||'어머니(아버지)')+'이 '+med.name+'을(를) 복용하셨습니다 💊"';
+        setTimeout(()=>addAiBubble('📱 '+notify),1000);
+      }
+    }
+  }
+  showToast('💊 복용 완료!');
+}
+
+// ── 알람 체커 ──
+function startAlarmChecker(){
+  alarmTimers.forEach(clearInterval);
+  alarmTimers=[];
+  const timer=setInterval(checkAlarms,30000); // 30초마다
+  alarmTimers.push(timer);
+  checkAlarms(); // 즉시 1회
+}
+
+function checkAlarms(){
+  const meds=settings.meds||[];
+  const n=settings.notify||{};
+  if(meds.length===0)return;
+  const now=new Date();
+  const todayKey=now.toDateString();
+  if(!medStatus[todayKey])medStatus[todayKey]={};
+
+  meds.forEach(m=>{
+    const status=medStatus[todayKey][m.id];
+    if(status==='taken')return;
+    const [h,min]=m.alarmTime.split(':').map(Number);
+    const alarmDt=new Date(); alarmDt.setHours(h,min,0,0);
+    const diffMin=(now-alarmDt)/60000;
+
+    // 알람 시간 ±2분 내
+    if(diffMin>=-1&&diffMin<=2&&!status){
+      if(n.alarmPopup!==false) showAlarmPopup(m);
+      if(n.alarmChat!==false){
+        addAiBubble(
+          `⏰ ${esc(m.name)} 드실 시간이에요! (${esc(m.time)} ${esc(m.alarmTime)})\n${esc(m.dose)} 챙겨드세요 😊\n복용하셨으면 아래 💊 버튼을 눌러주세요!`,
+          null,null,'med-remind-card'
+        );
+      }
+    }
+
+    // 1시간 지난 미복용
+    if(diffMin>60&&!status){
+      medStatus[todayKey][m.id]='missed';
+      renderMedBar();
+      const notify=settings.notify||{};
+      if(notify.medMissed){
+        const children=settings.children||[];
+        if(children.length>0){
+          const msg='📱 '+children.map(c=>c.name).join(', ')+'께 알림: "'+
+            (settings.userName||'어머니(아버지)')+'이 '+m.name+'을(를) 아직 복용하지 않으셨습니다 ⚠️"';
+          addAiBubble(msg);
+        }
+      }
+    }
+  });
+}
+
+// ── 알람 팝업 ──
+function showAlarmPopup(med){
+  currentAlarmMed=med;
+  document.getElementById('alarmTitle').textContent=med.name+' 드실 시간이에요!';
+  document.getElementById('alarmDesc').textContent=med.time+' '+med.alarmTime+' · '+med.dose+(med.note?'\n'+med.note:'');
+  document.getElementById('alarmPopup').classList.add('show');
+}
+function hideAlarm(){document.getElementById('alarmPopup').classList.remove('show');currentAlarmMed=null;}
+function markTaken(){
+  if(!currentAlarmMed)return;
+  takeMedFromBar(currentAlarmMed.id);
+  hideAlarm();
+}
+
+// ── 약 복용 현황 바 토글 ──
+function toggleMedBarShow(){
+  document.getElementById('medBar').classList.toggle('show');
+  renderMedBar();
+}
+
+// ── 파일 입력 ──
+function setupFileInput(){
+  const fi=document.getElementById('realFileInput');
+  fi.addEventListener('change',e=>{
+    const file=e.target.files[0]; if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      realImageUrl=ev.target.result;
+      realImageB64=ev.target.result.split(',')[1];
+      showPreview(realImageUrl);
+      selectedSample=null;
+      document.querySelectorAll('.sample-item').forEach(e=>e.classList.remove('selected'));
+      document.getElementById('selLabel').textContent='사진 선택됨 ✓';
+      document.getElementById('panelSendBtn').disabled=false;
+    };
+    reader.readAsDataURL(file); fi.value='';
+  });
+}
+function openCamera(){const fi=document.getElementById('realFileInput');fi.setAttribute('capture','environment');fi.click();}
+function openGallery(){const fi=document.getElementById('realFileInput');fi.removeAttribute('capture');fi.click();}
+function showPreview(url){document.getElementById('previewImg').src=url;document.getElementById('previewWrap').style.display='block';}
+function clearPreview(){realImageB64=null;realImageUrl=null;document.getElementById('previewWrap').style.display='none';document.getElementById('previewImg').src='';document.getElementById('panelSendBtn').disabled=!selectedSample;document.getElementById('selLabel').textContent=selectedSample?selectedSample.label+' 선택됨 ✓':'';}
+
+// ── 샘플 그리드 ──
+function buildGrid(){
+  const grid=document.getElementById('sampleGrid');
+  const emojis=['🍚','🥣','🍳','🍜','🥩','🥕','🍎','🫕'];
+  SAMPLES.forEach((s,i)=>{
+    const item=document.createElement('div');
+    item.className='sample-item';
+    item.innerHTML=`<img src="${s.img}" alt="${s.label}" loading="lazy" onerror="this.outerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px\\'>${emojis[i]}</div>'"/><span class="s-label">${s.label}</span>`;
+    item.onclick=()=>{
+      document.querySelectorAll('.sample-item').forEach(e=>e.classList.remove('selected'));
+      item.classList.add('selected'); selectedSample=s;
+      realImageB64=null;realImageUrl=null;
+      document.getElementById('previewWrap').style.display='none';
+      document.getElementById('panelSendBtn').disabled=false;
+      document.getElementById('selLabel').textContent=s.label+' 선택됨 ✓';
+    };
+    grid.appendChild(item);
+  });
+}
+
+// ── 패널 ──
+function togglePanel(){
+  const overlay=document.getElementById('photoPanelOverlay');
+  const btn=document.getElementById('imgBtn');
+  const isOpen=overlay.classList.toggle('open');
+  btn.classList.toggle('active',isOpen);
+  // 열릴 때 body 스크롤 잠금 (배경 스크롤 방지)
+  document.body.style.overflow=isOpen?'hidden':'';
+}
+function closePanel(){
+  document.getElementById('photoPanelOverlay').classList.remove('open');
+  document.getElementById('imgBtn').classList.remove('active');
+  document.body.style.overflow='';
+  selectedSample=null;realImageB64=null;realImageUrl=null;
+  document.querySelectorAll('.sample-item').forEach(e=>e.classList.remove('selected'));
+  document.getElementById('panelSendBtn').disabled=true;
+  document.getElementById('selLabel').textContent='';
+  document.getElementById('previewWrap').style.display='none';
+}
+
+// ── 사진 전송 ──
+function sendPhoto(){
+  const imgUrl=realImageUrl||(selectedSample?selectedSample.img:null);
+  const desc=realImageUrl?'직접 촬영한 식사':(selectedSample?selectedSample.desc:'');
+  const label=realImageUrl?'📷 식사 사진을 보냈어요!':`📷 ${selectedSample.label} 사진을 보냈어요!`;
+  closePanel();
+  addUserBubble(label,imgUrl);
+  callClaude(`오늘 제 식사예요: ${desc}. 분석해주세요!`,'meal',realImageB64);
+}
+
+// ── 빠른 버튼 & 입력 ──
+function sendDirect(text){
+  if(isLoading)return;
+  addUserBubble(text,null);
+  let type='default';
+  if(text.includes('기분')||text.includes('안녕'))type='greeting';
+  else if(text.includes('아침')||text.includes('드셨'))type='morning';
+  else if(text.includes('건강')||text.includes('조언'))type='health';
+  else if(text.includes('약 먹')||text.includes('약을'))type='med';
+  callClaude(text,type,null);
+}
+function sendFromInput(){
+  if(isLoading)return;
+  const input=document.getElementById('textInput');
+  const text=input.value.trim(); if(!text)return;
+  input.value='';
+  addUserBubble(text,null);
+  let type='default';
+  if(text.includes('약')&&(text.includes('먹')||text.includes('복용')))type='med';
+  callClaude(text,type,null);
+}
+
+// ── 스트릭 ──
+function renderStreak(){
+  const dots=document.getElementById('streakDots');
+  document.getElementById('streakText').textContent=streak+'일 달성';
+  dots.innerHTML='';
+  for(let i=0;i<7;i++){const d=document.createElement('div');d.className='streak-dot'+(i<streak?' done':'');d.textContent=i<streak?'⭐':'';dots.appendChild(d);}
+}
+function incrementStreak(){streak=Math.min(streak+1,7);localStorage.setItem('streak',streak);renderStreak();showToast(streak>=7?'🏆 7일 연속 달성!':'⭐ 오늘 미션 달성! '+streak+'일째!');}
+
+// ── 버블 ──
+function nowStr(){return new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}
+
+function addUserBubble(text,imgUrl){
+  const area=document.getElementById('chatArea');
+  const row=document.createElement('div'); row.className='bubble-row user';
+  row.innerHTML=`<div class="bubble user"><div>${esc(text).replace(/\n/g,'<br>')}</div>${imgUrl?`<img class="meal-img" src="${imgUrl}" alt="식사"/>`:''}  <div class="meta">${nowStr()}</div></div>`;
+  area.appendChild(row); area.scrollTop=area.scrollHeight;
+}
+
+function addAiBubble(text,scoreData,notifyMsg,cardClass){
+  const area=document.getElementById('chatArea');
+  const row=document.createElement('div'); row.className='bubble-row';
+  let extra='';
+  if(scoreData)extra+=`<div class="score-card"><div style="font-size:12px;color:var(--muted);margin-bottom:4px">오늘의 건강 점수 🏅</div><div class="score-num">${scoreData.score}점</div><div class="score-bar-wrap"><div class="score-bar-fill" style="width:${scoreData.score}%"></div></div><div style="font-size:12px;color:var(--muted)">${scoreData.comment}</div></div>`;
+  if(notifyMsg)extra+=`<div class="${cardClass||'notify-card'}">📱 ${esc(notifyMsg)}</div>`;
+  row.innerHTML=`<div class="b-avatar">🤖</div><div class="bubble ai">${text.replace(/\n/g,'<br>')}${extra}<div class="meta">AI 손주 · ${nowStr()}</div></div>`;
+  area.appendChild(row); area.scrollTop=area.scrollHeight;
+}
+
+function addNutritionCard(data, notifyMsg){
+  const area=document.getElementById('chatArea');
+  const row=document.createElement('div'); row.className='bubble-row';
+
+  const statusClass={good:'fill-good',ok:'fill-ok',low:'fill-low',high:'fill-high'};
+  const statusTextClass={good:'status-good',ok:'status-ok',low:'status-low',high:'status-high'};
+
+  const nutrientBars=(data.nutrients||[]).map(n=>`
+    <div class="nc-bar-row">
+      <div class="nc-bar-label">
+        <span class="nc-bar-name">${esc(n.name)}</span>
+        <span class="nc-bar-value ${statusTextClass[n.status]||''}">${esc(n.status_text)}</span>
+      </div>
+      <div class="nc-bar-bg"><div class="nc-bar-fill ${statusClass[n.status]||'fill-ok'}" style="width:${n.level}%"></div></div>
+      <div class="nc-bar-status ${statusTextClass[n.status]||''}">${esc(n.tip)}</div>
+    </div>`).join('');
+
+  const recItems=(data.recommendations||[]).map(r=>`
+    <div class="nc-rec-item">
+      <span class="nc-rec-icon">${r.icon}</span>
+      <div class="nc-rec-info">
+        <div class="nc-rec-name">${esc(r.name)}</div>
+        <div class="nc-rec-reason">${esc(r.reason)}</div>
+      </div>
+    </div>`).join('');
+
+  const notifyHtml=notifyMsg?`<div class="notify-card">📱 ${esc(notifyMsg)}</div>`:'';
+
+  row.innerHTML=`
+    <div class="b-avatar">🤖</div>
+    <div style="max-width:92%;flex:1;">
+      <div class="bubble ai">
+        ${esc(data.praise||'').replace(/\n/g,'<br>')}
+        <div class="meta">AI 손주 · ${nowStr()}</div>
+      </div>
+      <div class="nutrition-card">
+        <div class="nc-header">
+          <span class="nc-header-icon">🥗</span>
+          <div class="nc-header-text">
+            <h3>영양 분석 리포트</h3>
+            <p>AI 영양 컨설턴트가 분석했어요</p>
+          </div>
+        </div>
+        <div class="nc-score-row">
+          <div class="nc-score-circle">
+            <span class="nc-score-num">${data.score||80}</span>
+            <span class="nc-score-unit">점</span>
+          </div>
+          <div class="nc-score-info">
+            <div class="nc-score-label">${esc(data.score_label||'잘 드셨어요')}</div>
+            <div class="nc-score-comment">${esc(data.score_comment||'')}</div>
+          </div>
+        </div>
+        <div class="nc-nutrients">
+          <div class="nc-section-title">📊 영양소 분석</div>
+          ${nutrientBars}
+        </div>
+        <div class="nc-praise">
+          <div class="nc-section-title">💬 AI 손주의 한마디</div>
+          <div class="nc-praise-text">${esc(data.question||'').replace(/\n/g,'<br>')}</div>
+        </div>
+        <div class="nc-recommend">
+          <div class="nc-section-title">🍽️ 오늘 추천 영양식</div>
+          <div class="nc-rec-list">${recItems}</div>
+        </div>
+        <div class="nc-expert">
+          <div class="nc-expert-header">
+            <span class="nc-expert-badge">영양 전문가</span>
+          </div>
+          <div class="nc-expert-text">${esc(data.expert_comment||'').replace(/\n/g,'<br>')}</div>
+        </div>
+      </div>
+      ${notifyHtml}
+    </div>`;
+  area.appendChild(row); area.scrollTop=area.scrollHeight;
+}
+
+function addTyping(){const area=document.getElementById('chatArea');const row=document.createElement('div');row.id='typingRow';row.className='bubble-row';row.innerHTML=`<div class="b-avatar">🤖</div><div class="bubble ai typing"><span></span><span></span><span></span></div>`;area.appendChild(row);area.scrollTop=area.scrollHeight;}
+function removeTyping(){const t=document.getElementById('typingRow');if(t)t.remove();}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── AI 프로바이더 선택 ──
+function selectProvider(provider, save=true){
+  settings.provider=provider;
+  if(save){
+    // 현재 입력창 값도 함께 저장 (키가 지워지는 버그 방지)
+    const cK=document.getElementById('claudeKey');
+    const gK=document.getElementById('geminiKey');
+    const oK=document.getElementById('chatgptKey');
+    if(cK && cK.value.trim()) settings.claudeKey=cK.value.trim();
+    if(gK && gK.value.trim()) settings.geminiKey=gK.value.trim();
+    if(oK && oK.value.trim()) settings.chatgptKey=oK.value.trim();
+    localStorage.setItem('ai_settings',JSON.stringify(settings));
+  }
+  // 버튼 스타일
+  ['claude','chatgpt','gemini'].forEach(p=>{
+    const btn=document.getElementById('btn-'+p);
+    if(btn) btn.className='ai-provider-btn'+(p===provider?' active-'+p:'');
+  });
+  // 패널 표시
+  ['claude','chatgpt','gemini'].forEach(p=>{
+    const panel=document.getElementById('panel-'+p);
+    if(panel) panel.style.display=p===provider?'block':'none';
+  });
+  updateAiStatusBadge();
+}
+
+function updateAiStatusBadge(){
+  const badge=document.getElementById('aiStatusBadge');
+  if(!badge) return;
+  const p=settings.provider||'claude';
+  // settings에 저장된 값 + 현재 input에 입력된 값 모두 확인
+  const inputKey = {
+    claude:  (document.getElementById('claudeKey')  ? document.getElementById('claudeKey').value.trim()  : ''),
+    chatgpt: (document.getElementById('chatgptKey') ? document.getElementById('chatgptKey').value.trim() : ''),
+    gemini:  (document.getElementById('geminiKey')  ? document.getElementById('geminiKey').value.trim()  : ''),
+  };
+  const keyMap={claude:settings.claudeKey||inputKey.claude, chatgpt:settings.chatgptKey||inputKey.chatgpt, gemini:settings.geminiKey||inputKey.gemini};
+  const key=keyMap[p]||'';
+  const labels={claude:'🟣 Claude (Anthropic)', chatgpt:'🟢 ChatGPT (OpenAI)', gemini:'🔵 Gemini (Google)'};
+  const colors={claude:'#7C4DFF', chatgpt:'#10A37F', gemini:'#4285F4'};
+  const bgs={claude:'#F3F0FF', chatgpt:'#F0FBF7', gemini:'#EEF4FF'};
+  if(key){
+    badge.style.background=bgs[p];
+    badge.style.borderColor=colors[p];
+    badge.style.color=colors[p];
+    badge.textContent='✅ 현재: '+labels[p]+' 연결됨';
+  } else {
+    badge.style.background='var(--warm-bg)';
+    badge.style.borderColor='var(--border)';
+    badge.style.color='var(--muted)';
+    badge.textContent='현재: 데모 모드 ('+labels[p]+' 키 없음)';
+  }
+}
+
+// ── AI 통합 호출 ──
+async function callClaude(userText,msgType,imgB64){
+  if(isLoading)return;
+  isLoading=true; document.getElementById('sendBtn').disabled=true; addTyping();
+  const isMeal=msgType==='meal', isMed=msgType==='med';
+  // 최신 settings를 localStorage에서 재로드 (저장 후 바로 사용 시 반영)
+  const freshSettings = JSON.parse(localStorage.getItem('ai_settings')||'{}');
+  const provider = freshSettings.provider || settings.provider || 'claude';
+  const keyMap = {
+    claude:  freshSettings.claudeKey  || settings.claudeKey  || '',
+    chatgpt: freshSettings.chatgptKey || settings.chatgptKey || '',
+    gemini:  freshSettings.geminiKey  || settings.geminiKey  || '',
+  };
+  const apiKey = keyMap[provider] || freshSettings.apiKey || settings.apiKey || '';
+  // 현재 settings도 동기화
+  if(freshSettings.claudeKey)  settings.claudeKey  = freshSettings.claudeKey;
+  if(freshSettings.geminiKey)  settings.geminiKey  = freshSettings.geminiKey;
+  if(freshSettings.chatgptKey) settings.chatgptKey = freshSettings.chatgptKey;
+  const children=settings.children||[];
+  const n=settings.notify||{};
+
+  // 자녀 알림 생성
+  let notifyMsg=null;
+  if(isMeal&&n.meal&&children.length>0){
+    notifyMsg=children.map(c=>c.name).join(', ')+'께 알림: "'+(settings.userName||'어머니(아버지)')+'이 식사를 맛있게 하셨습니다 😊"';
+  } else if(isMeal&&children.length===0){
+    notifyMsg='(⚙️ 설정에서 자녀 연락처를 등록하면 자동 알림이 발송됩니다)';
+  }
+
+  // 데모 모드
+  if(!apiKey){
+    await new Promise(r=>setTimeout(r,1800+Math.random()*600));
+    removeTyping();
+    if(isMeal){
+      const demoData={
+        praise:'와~ 이렇게 정성스러운 밥상이라니 오늘 아침부터 최고십니다! 😊\n골고루 잘 차려드셨네요, 참 대견하세요.',
+        score:88, score_label:'아주 훌륭해요!',
+        score_comment:'균형 잡힌 한식 식단으로 건강하게 드셨어요',
+        nutrients:[
+          {name:'단백질',level:80,status:'good',status_text:'잘 드셨어요',tip:'생선·두부에서 좋은 단백질을 챙기셨어요'},
+          {name:'탄수화물',level:85,status:'ok',status_text:'적당해요',tip:'밥 한 공기 양이 딱 좋아요'},
+          {name:'채소·식이섬유',level:70,status:'good',status_text:'잘 드셨어요',tip:'나물 덕분에 식이섬유가 풍부해요'},
+          {name:'나트륨',level:65,status:'ok',status_text:'보통이에요',tip:'국물은 조금 남기시면 더 좋아요'},
+          {name:'칼슘',level:45,status:'low',status_text:'조금 부족해요',tip:'두유나 멸치 한 줌 추가해 보세요'},
+        ],
+        recommendations:[
+          {icon:'🥚',name:'삶은 계란 1개',reason:'부족한 단백질과 비타민D를 한번에 보충할 수 있어요.'},
+          {icon:'🥛',name:'따뜻한 두유 한 컵',reason:'칼슘이 풍부해서 뼈 건강에 아주 좋아요.'},
+          {icon:'🍊',name:'귤 한 개',reason:'비타민C가 면역력을 높이고 철분 흡수를 도와줘요.'},
+        ],
+        expert_comment:'오늘 식사는 한국 전통식의 균형을 잘 갖추셨어요. 다양한 나물 반찬 덕분에 식이섬유와 미네랄을 충분히 섭취하셨습니다. 칼슘 보충을 위해 매일 두유나 유제품을 한 잔 추가해 드시면 골다공증 예방에 큰 도움이 됩니다.',
+        question:'이 나물 반찬, 혹시 직접 무치신 건가요? 옛날 어머니께서 해주시던 맛이랑 비슷한가요? 🥬',
+      };
+      addNutritionCard(demoData,notifyMsg); incrementStreak();
+    } else {
+      const pool=DEMO[msgType]||DEMO.default;
+      addAiBubble(pool[Math.floor(Math.random()*pool.length)],null,notifyMsg);
+    }
+    isLoading=false; document.getElementById('sendBtn').disabled=false;
+    return;
+  }
+
+  // 실제 API 호출
+  try{
+    let rawText='';
+    if(provider==='claude')      rawText=await callClaudeAPI(apiKey,userText,imgB64);
+    else if(provider==='chatgpt') rawText=await callChatGPTAPI(apiKey,userText,imgB64);
+    else if(provider==='gemini')  rawText=await callGeminiAPI(apiKey,userText,imgB64);
+    removeTyping();
+
+    if(isMeal){
+      try{
+        // 1단계: 마크다운 코드블록 제거 (```json ... ``` 또는 ``` ... ```)
+        let cleaned = rawText
+          .replace(/```json[\s\S]*?```/g, m => m.replace(/```json|```/g,''))
+          .replace(/```[\s\S]*?```/g,    m => m.replace(/```/g,''))
+          .replace(/```json|```/g,'')
+          .trim();
+
+        // 2단계: JSON 블록 추출 — 첫 { 부터 마지막 } 까지
+        const jsonStart = cleaned.indexOf('{');
+        const jsonEnd   = cleaned.lastIndexOf('}') + 1;
+        if(jsonStart === -1 || jsonEnd === 0) throw new Error('JSON 없음');
+        const jsonStr = cleaned.slice(jsonStart, jsonEnd);
+
+        // 3단계: 파싱 시도
+        const parsed = JSON.parse(jsonStr);
+
+        // 4단계: 필수 필드 없으면 보완
+        if(!parsed.praise)        parsed.praise       = '오늘 식사도 정말 잘 챙겨드셨네요! 😊';
+        if(!parsed.score)         parsed.score        = 80;
+        if(!parsed.score_label)   parsed.score_label  = '잘 드셨어요';
+        if(!parsed.nutrients)     parsed.nutrients    = [];
+        if(!parsed.recommendations) parsed.recommendations = [];
+
+        addNutritionCard(parsed, notifyMsg);
+        incrementStreak();
+        if(USE_DB) saveMealToDB(parsed);
+      }catch(e){
+        // 파싱 실패 시 rawText 그대로 보여주지 말고 오류 메시지
+        console.warn('식사 JSON 파싱 실패: ' + e.message + ' / 원문: ' + rawText.slice(0,200));
+        addAiBubble('식사 분석 결과를 받았는데 표시 형식이 맞지 않아요. 다시 사진을 보내주시면 정확하게 분석해 드릴게요! 😊', null, notifyMsg);
+        incrementStreak();
+        if(USE_DB) saveMealToDB({score:0, meal_time:getMealTime()});
+      }
+    } else {
+      addAiBubble(rawText,null,notifyMsg);
+    }
+    history.push({role:'assistant',content:rawText});
+  }catch(err){
+    removeTyping();
+    addAiBubble('잠시 문제가 생겼어요. API 키를 확인해 주세요 😊\n('+err.message+')');
+    history.pop();
+  }
+  isLoading=false; document.getElementById('sendBtn').disabled=false;
+}
+
+// ── Claude API ──
+async function callClaudeAPI(key,userText,imgB64){
+  const userContent=[];
+  if(imgB64){userContent.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:imgB64}});userContent.push({type:'text',text:userText});}
+  else{userContent.push({type:'text',text:userText});}
+  history.push({role:'user',content:userContent});
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,system:SYSTEM_PROMPT,messages:history})
+  });
+  const data=await res.json();
+  if(data.error) throw new Error(data.error.message);
+  return data.content[0].text;
+}
+
+// ── ChatGPT API ──
+async function callChatGPTAPI(key,userText,imgB64){
+  const userContent=[];
+  if(imgB64){userContent.push({type:'image_url',image_url:{url:'data:image/jpeg;base64,'+imgB64}});userContent.push({type:'text',text:userText});}
+  else{userContent.push({type:'text',text:userText});}
+  const msgs=[{role:'system',content:SYSTEM_PROMPT},...history,{role:'user',content:userContent}];
+  history.push({role:'user',content:userContent});
+  const model=settings.chatgptModel||'gpt-4o-mini';
+  const res=await fetch('https://api.openai.com/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body:JSON.stringify({model,max_tokens:1000,messages:msgs})
+  });
+  const data=await res.json();
+  if(data.error) throw new Error(data.error.message);
+  return data.choices[0].message.content;
+}
+
+// ── Gemini API ──
+async function callGeminiAPI(key,userText,imgB64){
+  const parts=[];
+  if(imgB64){parts.push({inline_data:{mime_type:'image/jpeg',data:imgB64}});}
+  parts.push({text:userText});
+  const contents=[...history.map(m=>({
+    role:m.role==='assistant'?'model':'user',
+    parts:[{text:typeof m.content==='string'?m.content:(m.content[0]?.text||'')}]
+  })),{role:'user',parts}];
+  history.push({role:'user',content:userText});
+  const _fs=JSON.parse(localStorage.getItem('ai_settings')||'{}');
+  const model=_fs.geminiModel||settings.geminiModel||'gemini-1.5-flash-latest';
+  const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      system_instruction:{parts:[{text:SYSTEM_PROMPT}]},
+      contents,
+      generationConfig:{
+        maxOutputTokens:1000,
+        // 식사 분석 시 JSON 강제 출력 (Gemini 전용)
+        ...(userText.includes('식사') || userText.includes('분석') || imgB64
+          ? {responseMimeType:'application/json'} : {})
+      }
+    })
+  });
+  const data=await res.json();
+  if(data.error) throw new Error(data.error.message);
+  return data.candidates[0].content.parts[0].text;
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+
+// ══════════════════════════════════════
+//  Supabase 연결 레이어 (관리자 ↔ 사용자 앱)
+// ══════════════════════════════════════
+let SB=null, SB_USER_ID=null, SB_ORG_ID=null, USE_DB=false;
+
+function setDbStatus(state,msg){
+  const bar=document.getElementById('dbSyncBar');
+  if(!bar)return;
+  bar.className='db-sync-bar '+state;
+  document.getElementById('dbSyncMsg').textContent=msg;
+}
+
+async function initOrgConnection(dbUrl,dbKey,userId){
+  if(!dbUrl||!dbKey)return;
+  try{
+    setDbStatus('syncing','기관 서버에 연결 중...');
+    SB=window.supabase.createClient(dbUrl,dbKey);
+    const {error}=await SB.from('users').select('id').limit(1);
+    if(error)throw error;
+    USE_DB=true;
+    SB_USER_ID=userId||null;
+    if(SB_USER_ID){
+      await loadUserFromDB(SB_USER_ID);
+      await loadMedsFromDB(SB_USER_ID);
+      subscribeUserChanges(SB_USER_ID);
+    }
+    setDbStatus('connected','✅ 기관 서버 연결됨 — 기록이 관리자에게 전송됩니다');
+    updateOrgConnectStatus(true);
+    showToast('✅ 기관 서버에 연결되었습니다');
+    updateLastSeen();
+  }catch(e){
+    setDbStatus('error','❌ 연결 실패: '+(e.message||'서버 오류'));
+    showToast('❌ 연결 실패: '+(e.message||'서버 오류'));
+  }
+}
+
+async function connectToOrg(){
+  const url=document.getElementById('orgDbUrl').value.trim();
+  const key=document.getElementById('orgDbKey').value.trim();
+  const uid=document.getElementById('orgUserId').value.trim();
+  if(!url||!key){showToast('❌ URL과 Key를 모두 입력해주세요');return;}
+  settings.orgDbUrl=url; settings.orgDbKey=key; settings.orgUserId=uid;
+  localStorage.setItem('ai_settings',JSON.stringify(settings));
+  await initOrgConnection(url,key,uid);
+}
+
+function updateOrgConnectStatus(connected){
+  const el=document.getElementById('orgConnectStatus');
+  if(!el)return;
+  if(connected){
+    el.style.background='#E8F5E9'; el.style.color='#2E7D32';
+    el.style.borderColor='#A5D6A7';
+    el.textContent='✅ 기관 서버 연결됨 — 활동 기록이 관리자에게 전달됩니다';
+  } else {
+    el.style.background='#F5F5F5'; el.style.color='var(--muted)';
+    el.style.borderColor='var(--border)';
+    el.textContent='🔌 연결 안됨 (로컬 모드)';
+  }
+}
+
+async function loadUserFromDB(userId){
+  if(!SB)return;
+  try{
+    const {data,error}=await SB.from('users').select('*').eq('id',userId).single();
+    if(error||!data)return;
+    if(data.name&&!settings.userName) settings.userName=data.name;
+    if(data.age&&!settings.userAge)   settings.userAge=data.age;
+    if(data.ai) settings.provider=data.ai.toLowerCase();
+    if(data.options){
+      const opts=typeof data.options==='string'?JSON.parse(data.options):data.options;
+      settings.notify=settings.notify||{};
+      if(opts.meal!==undefined)  settings.notify.meal=opts.meal;
+      if(opts.med!==undefined)   settings.notify.medTaken=opts.med;
+      if(opts.child!==undefined) settings.notify.child=opts.child;
+    }
+    if(data.children_contacts){
+      const cc=typeof data.children_contacts==='string'?JSON.parse(data.children_contacts):data.children_contacts;
+      if(cc.length>0&&(!settings.children||settings.children.length===0)) settings.children=cc;
+    }
+    SB_ORG_ID=data.org_id;
+    // DB의 streak을 로컬에 동기화
+    if(data.streak!=null){ streak=data.streak; localStorage.setItem('streak',String(streak)); }
+    localStorage.setItem('ai_settings',JSON.stringify(settings));
+    updateHeaderSub();
+    showToast('👋 '+(data.name||'어르신')+', 반갑습니다!');
+  }catch(e){console.warn('사용자 로드 오류:',e);}
+}
+
+async function loadMedsFromDB(userId){
+  if(!SB)return;
+  try{
+    const {data,error}=await SB.from('med_logs')
+      .select('*').eq('user_id',userId).eq('status','pending')
+      .gte('scheduled_at',new Date().toISOString().split('T')[0]).order('scheduled_at');
+    if(error||!data||data.length===0)return;
+    if(!settings.meds||settings.meds.length===0){
+      settings.meds=data.map(m=>({
+        id:m.id, name:m.med_name, dose:m.dose||'1정',
+        time:'아침식후',
+        alarmTime:m.scheduled_at?new Date(m.scheduled_at).toTimeString().slice(0,5):'08:00',
+        note:''
+      }));
+      localStorage.setItem('ai_settings',JSON.stringify(settings));
+      renderMedBar();
+    }
+  }catch(e){console.warn('약 로드 오류:',e);}
+}
+
+function subscribeUserChanges(userId){
+  if(!SB)return;
+  SB.channel('user_'+userId)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'users',filter:`id=eq.${userId}`},payload=>{
+      loadUserFromDB(userId);
+      setDbStatus('syncing','관리자 설정 동기화 중...');
+      setTimeout(()=>setDbStatus('connected','✅ 기관 서버 연결됨'),1500);
+      showToast('🔄 관리자가 설정을 업데이트했습니다');
+    }).subscribe();
+}
+
+async function saveMealToDB(nutritionData){
+  if(!SB||!SB_USER_ID)return;
+  setDbStatus('syncing','식사 기록 전송 중...');
+  try{
+    await SB.from('meals').insert({
+      user_id:SB_USER_ID, org_id:SB_ORG_ID,
+      score:nutritionData.score||0,
+      score_label:nutritionData.score_label||'',
+      score_comment:nutritionData.score_comment||'',
+      nutrients:typeof nutritionData.nutrients==='string'
+        ? nutritionData.nutrients
+        : JSON.stringify(nutritionData.nutrients||[]),
+      praise:nutritionData.praise||'',
+      expert_comment:nutritionData.expert_comment||'',
+      image_url: realImageUrl||null,
+      meal_time:getMealTime(),
+      created_at:new Date().toISOString()
+    });
+    await SB.from('users').update({
+      meal_today:true,
+      last_seen:new Date().toISOString(),
+      updated_at:new Date().toISOString()
+    }).eq('id',SB_USER_ID);
+    // 활동 로그 기록
+    await SB.from('activity_logs').insert({
+      user_id:SB_USER_ID, org_id:SB_ORG_ID||null,
+      type:'meal', text:'식사 사진 전송 완료 ('+( nutritionData.score||0)+'점)',
+      metadata:{score:nutritionData.score||0, meal_time:getMealTime()},
+      created_at:new Date().toISOString()
+    }).then(()=>{}).catch(()=>{});
+    setDbStatus('connected','✅ 식사 기록 전송 완료');
+    setTimeout(()=>setDbStatus('connected','✅ 기관 서버 연결됨'),3000);
+  }catch(e){console.warn('식사 DB저장 실패:',e);setDbStatus('connected','✅ 기관 서버 연결됨');}
+}
+
+async function saveMedToDB(medId,medName){
+  if(!SB||!SB_USER_ID)return;
+  setDbStatus('syncing','약 복용 기록 전송 중...');
+  try{
+    await SB.from('med_logs').update({status:'taken',taken_at:new Date().toISOString()})
+      .eq('id',medId).eq('user_id',SB_USER_ID);
+    await SB.from('activity_logs').insert({
+      user_id:SB_USER_ID, org_id:SB_ORG_ID||null,
+      type:'med', text:medName+' 복용 완료',
+      metadata:{med_name:medName},
+      created_at:new Date().toISOString()
+    });
+    const {data}=await SB.from('med_logs').select('status').eq('user_id',SB_USER_ID).eq('status','pending')
+      .gte('scheduled_at',new Date().toISOString().split('T')[0]);
+    if(!data||data.length===0)
+      await SB.from('users').update({med_today:true,last_seen:new Date().toISOString()}).eq('id',SB_USER_ID);
+    setDbStatus('connected','✅ 약 복용 기록 전송 완료');
+    setTimeout(()=>setDbStatus('connected','✅ 기관 서버 연결됨'),3000);
+  }catch(e){console.warn('약 DB저장 실패:',e);setDbStatus('connected','✅ 기관 서버 연결됨');}
+}
+
+async function updateLastSeen(){
+  if(!SB||!SB_USER_ID)return;
+  try{
+    await SB.from('users').update({
+      last_seen:new Date().toISOString(),
+      offline_days:0,
+      updated_at:new Date().toISOString()
+    }).eq('id',SB_USER_ID);
+    // 로그인 활동 기록
+    await SB.from('activity_logs').insert({
+      user_id:SB_USER_ID, org_id:SB_ORG_ID||null,
+      type:'login', text:'앱 접속',
+      created_at:new Date().toISOString()
+    }).then(()=>{}).catch(()=>{});
+  }
+  catch(e){}
+}
+
+function getMealTime(){
+  const h=new Date().getHours();
+  if(h<10)return'breakfast';if(h<14)return'lunch';if(h<19)return'dinner';return'snack';
+}
+
+// ══════════════════════════════════════
+//  AI 전화 엔진 (TTS + STT)
+// ══════════════════════════════════════
+
+const CALL_SCRIPTS = {
+  med: {
+    subtitle: '약 복용 확인',
+    steps: [
+      { speaker:'ai',  text:(name,med)=>`${name||'어르신'}, 안녕하세요! AI 손주예요 😊 ${med||'약'} 드실 시간이에요. 혹시 드셨나요?` },
+      { speaker:'user', prompt:'약 드셨나요?', keywords:{ yes:['먹었','드셨','네','응','예','복용'], no:['안','못','아직','없'] } },
+      { speaker:'ai',  text:(ans)=> ans==='yes'
+          ? '잘 하셨어요! 건강을 위해 꼬박꼬박 챙겨드시는 모습이 정말 대견해요 💊 오늘도 건강한 하루 보내세요!'
+          : '아직 안 드셨군요. 지금 챙겨드시면 좋겠어요 💊 식사하신 후에 드시는 거 잊지 마세요!'},
+    ]
+  },
+  meal: {
+    subtitle: '아침 식사 확인',
+    steps: [
+      { speaker:'ai',  text:(name)=>`${name||'어르신'}, 좋은 아침이에요! AI 손주예요 😊 오늘 아침 식사는 하셨나요?` },
+      { speaker:'user', prompt:'식사하셨나요?', keywords:{ yes:['먹었','드셨','네','응','예','했','했어'], no:['안','못','아직','없','배고'] } },
+      { speaker:'ai',  text:(ans)=> ans==='yes'
+          ? '잘 하셨어요! 아침을 든든하게 드셔야 하루가 활기차죠 🍚 오늘도 건강하고 즐거운 하루 보내세요!'
+          : '아직 식사 전이시군요! 꼭 챙겨드세요 🍚 아침을 거르시면 몸이 힘드실 수 있어요. 따뜻한 거 드세요!'},
+    ]
+  },
+  evening: {
+    subtitle: '저녁 안부',
+    steps: [
+      { speaker:'ai',  text:(name)=>`${name||'어르신'}, 저녁이에요! AI 손주예요 😊 오늘 하루 어떻게 보내셨어요?` },
+      { speaker:'user', prompt:'오늘 하루는요?', keywords:{ good:['좋았','괜찮','잘','좋아','행복'], bad:['힘들','아파','피곤','나빠','안좋'] } },
+      { speaker:'ai',  text:(ans)=> ans==='good'
+          ? '다행이에요! 좋은 하루 보내셨군요 😊 저녁 식사도 꼭 챙겨드시고, 편안한 밤 되세요!'
+          : '많이 힘드셨군요 😊 오늘 푹 쉬시고, 내일은 더 좋은 하루가 될 거예요. 따뜻하게 주무세요!'},
+    ]
+  },
+  hello: {
+    subtitle: '일반 안부',
+    steps: [
+      { speaker:'ai',  text:(name)=>`${name||'어르신'}, 안녕하세요! AI 손주예요 😊 오늘 건강하게 잘 지내고 계시죠?` },
+      { speaker:'user', prompt:'네, 말씀해 주세요', keywords:{ good:['좋','네','응','예','괜찮'], bad:['아파','힘들','나빠','안좋'] } },
+      { speaker:'ai',  text:(ans)=> ans==='good'
+          ? '잘 지내고 계시는군요, 정말 다행이에요! 😊 오늘도 건강한 하루 보내시고, 궁금한 거 있으면 언제든지 채팅으로 말씀해 주세요!'
+          : '많이 힘드시죠 😊 오늘 푹 쉬세요. 궁금한 거 있으면 언제든지 채팅으로 말씀해 주세요!'},
+    ]
+  }
+};
+
+// ── 전화 상태 ──
+let callState = { active:false, type:'', step:0, timer:null, timerSec:0, recognition:null, speaking:false };
+
+function showCallMenu(){ const m=document.getElementById('callMenu'); m.style.display=m.style.display==='flex'?'none':'flex'; }
+function hideCallMenu(){ document.getElementById('callMenu').style.display='none'; }
+document.addEventListener('click',e=>{ if(!e.target.closest('.test-call-btn')&&!e.target.closest('#callMenu')) hideCallMenu(); });
+
+// ── 전화 시작 (수신 화면) ──
+function startCall(type){
+  if(callState.active) return;
+  callState = { active:true, type, step:0, timer:null, timerSec:0, recognition:null, speaking:false };
+  const script = CALL_SCRIPTS[type];
+  const overlay = document.getElementById('callOverlay');
+  overlay.className = 'call-overlay ringing';
+  document.getElementById('callStatus').textContent = '전화가 왔습니다...';
+  document.getElementById('callSubtitle').textContent = script.subtitle;
+  document.getElementById('callTimer').textContent = '';
+  document.getElementById('callCaption').textContent = 'AI 손주에게서 전화가 왔어요 😊';
+  document.getElementById('userCaption').classList.remove('show');
+  document.getElementById('answerBtn').style.display = 'flex';
+  setWaveSilent(true);
+
+  // 벨소리 효과음
+  playRingtone();
+}
+
+// ── 전화 받기 ──
+function answerCall(){
+  stopRingtone();
+  document.getElementById('callOverlay').className = 'call-overlay active';
+  document.getElementById('callStatus').textContent = '통화 중';
+  document.getElementById('answerBtn').style.display = 'none';
+
+  // 타이머 시작
+  callState.timerSec = 0;
+  callState.timer = setInterval(()=>{
+    callState.timerSec++;
+    const m=Math.floor(callState.timerSec/60), s=callState.timerSec%60;
+    document.getElementById('callTimer').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }, 1000);
+
+  // 첫 번째 AI 발화 시작
+  setTimeout(()=> runCallStep(), 800);
+}
+
+// ── 통화 단계 실행 ──
+async function runCallStep(){
+  const script = CALL_SCRIPTS[callState.type];
+  if(callState.step >= script.steps.length){ endCall(); return; }
+
+  const step = script.steps[callState.step];
+
+  if(step.speaker === 'ai'){
+    const name = settings.userName || '';
+    const medName = (settings.meds&&settings.meds[0]) ? settings.meds[0].name : '약';
+    let text = typeof step.text === 'function' ? step.text(name, medName) : step.text;
+    setCaption(text);
+    setWaveSilent(false);
+    await speak(text);
+    setWaveSilent(true);
+    callState.step++;
+    setTimeout(()=> runCallStep(), 400);
+
+  } else if(step.speaker === 'user'){
+    // 어르신 답변 대기 (STT)
+    setCaption('말씀해 주세요... 👂');
+    document.getElementById('userCaption').classList.add('show');
+    document.getElementById('userCaptionText').textContent = '듣고 있어요...';
+    listenForAnswer(step.keywords, (ans)=>{
+      callState.step++;
+      callState._lastAnswer = ans;
+      const nextStep = script.steps[callState.step];
+      if(nextStep && nextStep.speaker==='ai'){
+        const text = typeof nextStep.text === 'function' ? nextStep.text(ans) : nextStep.text;
+        callState.step++;
+        document.getElementById('userCaption').classList.remove('show');
+        setCaption(text);
+        setWaveSilent(false);
+        speak(text).then(()=>{
+          setWaveSilent(true);
+          setTimeout(()=> runCallStep(), 400);
+        });
+      }
+    });
+  }
+}
+
+// ── TTS 음성 발화 ──
+// Android speechSynthesis 15초 자동중단 방지 인터벌
+let _synthKeepAlive = null;
+function _startSynthKeepAlive(){
+  _stopSynthKeepAlive();
+  _synthKeepAlive = setInterval(()=>{
+    if(window.speechSynthesis.speaking){
+      window.speechSynthesis.pause();
+      window.speechSynthesis.resume();
+    }
+  }, 10000);
+}
+function _stopSynthKeepAlive(){
+  if(_synthKeepAlive){ clearInterval(_synthKeepAlive); _synthKeepAlive=null; }
+}
+
+// 음성 목록 로드 보장 (Android 비동기 문제 해결)
+function _getVoicesAsync(){
+  return new Promise(resolve=>{
+    let voices = window.speechSynthesis.getVoices();
+    if(voices.length > 0){ resolve(voices); return; }
+    // 아직 로드 안 됐으면 이벤트 대기
+    window.speechSynthesis.onvoiceschanged = ()=>{
+      voices = window.speechSynthesis.getVoices();
+      resolve(voices);
+    };
+    // 최대 1.5초 대기 후 강제 진행
+    setTimeout(()=> resolve(window.speechSynthesis.getVoices()), 1500);
+  });
+}
+
+function speak(text){
+  return new Promise(async resolve=>{
+    if(!('speechSynthesis' in window)){ resolve(); return; }
+    window.speechSynthesis.cancel();
+    await new Promise(r=>setTimeout(r, 100)); // cancel 후 짧은 대기
+
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = 'ko-KR';
+    utt.rate = parseFloat(settings.callRate||'0.8');
+    utt.pitch = settings.callVoice==='male' ? 0.8 : 1.1;
+    utt.volume = 1.0;
+
+    // 음성 목록 비동기 로드 후 선택 (Android 핵심 수정)
+    const voices = await _getVoicesAsync();
+    const isMale = settings.callVoice==='male';
+    // 1순위: ko-KR 성별 맞는 목소리
+    const krVoice = voices.find(v=>
+      v.lang==='ko-KR' && (isMale
+        ? (v.name.includes('Male')||v.name.includes('남')||v.name.includes('male'))
+        : (!v.name.includes('Male')&&!v.name.includes('male')))
+    )
+    // 2순위: ko-KR 아무 목소리
+    || voices.find(v=> v.lang==='ko-KR')
+    // 3순위: ko 계열 목소리
+    || voices.find(v=> v.lang.startsWith('ko'))
+    // 4순위: 기기 기본 목소리 (완전 무음 방지 — 영어로라도 읽음)
+    || voices.find(v=> v.default)
+    || (voices.length > 0 ? voices[0] : null);
+
+    if(krVoice){
+      utt.voice = krVoice;
+      // 선택된 목소리가 한국어가 아니면 rate 조정
+      if(!krVoice.lang.startsWith('ko')) utt.rate = 0.7;
+    }
+    // 음성 없어도 자막은 항상 보이도록
+    setCaption(text);
+
+    let done = false;
+    utt.onend = ()=>{
+      if(done) return; done=true;
+      callState.speaking=false;
+      _stopSynthKeepAlive();
+      resolve();
+    };
+    utt.onerror = (e)=>{
+      if(done) return; done=true;
+      callState.speaking=false;
+      _stopSynthKeepAlive();
+      resolve(); // 오류여도 다음 단계 진행
+    };
+    callState.speaking = true;
+    _startSynthKeepAlive(); // Android 15초 버그 방지
+    window.speechSynthesis.speak(utt);
+    // 음성이 안 나오는 기기를 위해 자막 항상 표시
+    const captionEl = document.getElementById('callCaption');
+    if(captionEl) captionEl.textContent = text;
+
+    // 안전망: 텍스트 길이 기반 최대 대기시간 (음성이 끝났는데 onend 안 불리는 경우)
+    const maxMs = Math.max(8000, text.length * 300);
+    setTimeout(()=>{
+      if(!done){ done=true; callState.speaking=false; _stopSynthKeepAlive(); resolve(); }
+    }, maxMs);
+  });
+}
+
+// ── STT 음성 인식 ──
+function listenForAnswer(keywords, callback){
+  // Web Speech API 지원 여부 확인
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){
+    // STT 미지원 시 5초 후 자동으로 긍정 답변 처리
+    document.getElementById('userCaptionText').textContent = '(마이크 미지원 — 자동으로 진행합니다)';
+    setTimeout(()=> callback('yes'), 3500);
+    return;
+  }
+
+  const rec = new SpeechRecognition();
+  rec.lang = 'ko-KR';
+  rec.continuous = false;
+  rec.interimResults = true;
+  rec.maxAlternatives = 1;
+  callState.recognition = rec;
+
+  rec.onresult = e=>{
+    const transcript = e.results[e.results.length-1][0].transcript;
+    document.getElementById('userCaptionText').textContent = transcript;
+
+    if(e.results[e.results.length-1].isFinal){
+      rec.stop();
+      const ans = classifyAnswer(transcript, keywords);
+      showToast(`"${transcript}" — ${ans==='yes'||ans==='good'?'긍정':'부정'}으로 인식`);
+      setTimeout(()=> callback(ans), 400);
+    }
+  };
+
+  rec.onerror = (e)=>{
+    // Android에서 network/not-allowed 오류 시 버튼으로 답변 선택
+    if(e.error==='not-allowed'){
+      document.getElementById('userCaptionText').textContent = '마이크 권한이 없어요. 버튼으로 답해주세요.';
+    } else {
+      document.getElementById('userCaptionText').textContent = '잘 못 들었어요. (자동으로 진행합니다)';
+    }
+    setTimeout(()=> callback('yes'), 2500);
+  };
+
+  rec.onend = ()=>{ callState.recognition = null; };
+  rec.start();
+
+  // 8초 후 자동 종료
+  setTimeout(()=>{
+    if(callState.recognition){ rec.stop(); callback('yes'); }
+  }, 8000);
+}
+
+// ── 답변 분류 ──
+function classifyAnswer(text, keywords){
+  const t = text.toLowerCase();
+  for(const [ans, words] of Object.entries(keywords)){
+    if(words.some(w=> t.includes(w))) return ans;
+  }
+  return Object.keys(keywords)[0]; // 기본값: 첫 번째 키
+}
+
+// ── 전화 종료 ──
+function hangupCall(){
+  // 중복 호출 방지
+  if(!callState.active && document.getElementById('callOverlay').className === 'call-overlay') return;
+
+  // 음성 인식 즉시 중단
+  try{ if(callState.recognition){ callState.recognition.abort(); callState.recognition=null; } }catch(e){}
+  // TTS 즉시 중단
+  try{ window.speechSynthesis.cancel(); _stopSynthKeepAlive(); }catch(e){}
+  // 벨소리 중단
+  stopRingtone();
+  // 타이머 중단
+  clearInterval(callState.timer);
+
+  const elapsed = document.getElementById('callTimer').textContent || '0:00';
+  const prevType = callState.type;
+
+  // 상태 초기화
+  callState = { active:false, type:'', step:0, timer:null, timerSec:0, recognition:null, speaking:false };
+
+  // 오버레이 확실히 숨기기 (Android display:none 강제)
+  const overlay = document.getElementById('callOverlay');
+  overlay.className = 'call-overlay';
+  overlay.style.display = 'none';
+  setTimeout(()=>{ overlay.style.display = ''; }, 50); // CSS class로 복원
+
+  setWaveSilent(true);
+  document.getElementById('userCaption').classList.remove('show');
+  document.getElementById('answerBtn').style.display = 'flex';
+
+  // 통화 내용 채팅에 요약
+  const typeLabel = { med:'약 복용 확인', meal:'아침 식사 확인', evening:'저녁 안부', hello:'일반 안부' };
+  if(prevType) addAiBubble(`📞 AI 전화 통화 완료 (${typeLabel[prevType]||'안부 전화'})\n통화 시간: ${elapsed}\n\n오늘도 건강하게 잘 지내세요! 궁금한 게 있으면 언제든지 채팅으로 말씀해 주세요 😊`);
+}
+
+function endCall(){
+  setTimeout(()=> hangupCall(), 1500);
+}
+
+// ── 자막 설정 ──
+function setCaption(text){ document.getElementById('callCaption').textContent = text; }
+
+// ── 파형 애니메이션 ──
+function setWaveSilent(silent){
+  document.querySelectorAll('.wave-bar').forEach(b=>{
+    b.classList.toggle('silent', silent);
+  });
+}
+
+// ── 벨소리 (AudioContext) ──
+let ringtoneInterval = null;
+function playRingtone(){
+  if(!('AudioContext' in window||'webkitAudioContext' in window)) return;
+  const AC = window.AudioContext||window.webkitAudioContext;
+  const playBeep = ()=>{
+    try{
+      const ctx = new AC();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = 440;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.4);
+      osc.start(); osc.stop(ctx.currentTime+0.4);
+    } catch(e){}
+  };
+  playBeep();
+  ringtoneInterval = setInterval(playBeep, 1800);
+}
+function stopRingtone(){
+  if(ringtoneInterval){ clearInterval(ringtoneInterval); ringtoneInterval=null; }
+}
+
+// ── 자동 전화 스케줄러 ──
+function checkAutoCall(){
+  const n = settings.notify||{};
+  const now = new Date();
+  const hm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  // 아침 식사 확인 (8:00)
+  if(n.callMeal && hm==='08:00' && !callState.active){
+    startCall('meal');
+  }
+  // 저녁 안부 (18:00)
+  if(n.callEvening && hm==='18:00' && !callState.active){
+    startCall('evening');
+  }
+  // 약 복용 확인
+  if(n.callMed){
+    const meds = settings.meds||[];
+    meds.forEach(m=>{
+      if(m.alarmTime===hm && !callState.active){
+        callState._currentMed = m;
+        startCall('med');
+      }
+    });
+  }
+}
+setInterval(checkAutoCall, 30000);
+
+
+// ══════════════════════════════════════
+//  순수 PWA 초기화 (카카오 없는 버전)
+// ══════════════════════════════════════
+
+// ── 1. 온보딩 ──
+function startApp(){
+  // 온보딩 제거
+  const ob = document.getElementById('onboardOverlay');
+  if(ob) ob.remove(); // DOM에서 완전히 제거
+
+  const isFirst = !localStorage.getItem('onboarded');
+  localStorage.setItem('onboarded','1');
+
+  if(isFirst && !settings.userName){
+    setTimeout(()=>{ openModal(); switchTab('basic'); }, 600);
+  }
+}
+
+// ── 2. Service Worker 인라인 등록 ──
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    const swCode = `
+const CACHE = 'ai-grandchild-v1';
+const OFFLINE_ASSETS = ['/'];
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(OFFLINE_ASSETS)));
+  self.skipWaiting();
+});
+self.addEventListener('activate', e => { self.clients.claim(); });
+self.addEventListener('fetch', e => {
+  if(e.request.url.includes('api.anthropic')||e.request.url.includes('openai')||e.request.url.includes('googleapis')||e.request.url.includes('unsplash')) return;
+  e.respondWith(
+    fetch(e.request)
+      .then(res => {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return res;
+      })
+      .catch(() => caches.match(e.request))
+  );
+});
+self.addEventListener('push', e => {
+  const d = e.data ? e.data.json() : {};
+  e.waitUntil(self.registration.showNotification(d.title||'AI 손주',{body:d.body||'약 드실 시간이에요! 💊',icon:'/icon-192.png',tag:d.tag||'med',requireInteraction:true}));
+});
+    `;
+    const blob = new Blob([swCode], {type:'application/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl)
+      .then(reg=>{ console.log('SW 등록 완료'); requestNotifPerm(reg); })
+      .catch(e=>console.log('SW 실패(무시 가능):', e.message));
+  });
+}
+
+async function requestNotifPerm(reg){
+  if(!('Notification' in window)) return;
+  const perm = await Notification.requestPermission();
+  if(perm==='granted') console.log('푸시 알림 허용');
+}
+
+// ── 3. 시스템 푸시 알림 (약 알람) ──
+function sendNativeNotif(title, body, tag){
+  if(Notification.permission!=='granted') return;
+  new Notification(title,{body, icon:'icon-192.png', tag, requireInteraction:true});
+}
+
+// ── 4. PWA 설치 프롬프트 ──
+let deferredPrompt=null;
+let isHTTPS = location.protocol==='https:';
+
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  setTimeout(showInstallBanner,3000);
+});
+window.addEventListener('appinstalled',()=>{
+  showToast('📱 앱이 설치되었습니다!');
+  hideInstallBanner();
+});
+
+function showInstallBanner(){
+  if(localStorage.getItem('pwa_dismissed')) return;
+  document.getElementById('installBanner').classList.add('show');
+}
+function installPWA(){
+  // HTTPS + deferredPrompt 있으면 → 자동 설치 프롬프트
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(r=>{
+      if(r.outcome==='accepted') showToast('📱 홈 화면에 추가되었습니다!');
+      deferredPrompt=null; hideInstallBanner();
+    });
+    return;
+  }
+  // 로컬 파일 또는 HTTPS 미적용 환경 → 수동 안내 팝업
+  hideInstallBanner();
+  showManualInstallGuide();
+}
+function hideInstallBanner(){
+  document.getElementById('installBanner').classList.remove('show');
+  localStorage.setItem('pwa_dismissed','1');
+}
+
+// 수동 설치 안내 팝업 (로컬 파일/HTTPS 미적용 환경)
+function showManualInstallGuide(){
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isAndroid=/Android/.test(navigator.userAgent);
+  const isSamsung=/SamsungBrowser/.test(navigator.userAgent);
+
+  // 기존 가이드 오버레이 열기
+  document.getElementById('guideOverlay').classList.add('show');
+  if(isIOS){
+    switchGuide('ios');
+  } else {
+    switchGuide('android');
+    // 삼성/안드로이드 전용 안내 업데이트
+    const steps = document.getElementById('guide-android');
+    if(steps){
+      steps.innerHTML = `
+        <div class="guide-step"><div class="g-num">1</div><div class="g-text">이 페이지를 <strong>크롬(Chrome)</strong> 또는 <strong>삼성 인터넷</strong>으로 열어주세요</div></div>
+        <div class="guide-step"><div class="g-num">2</div><div class="g-text">주소창 오른쪽 <strong>⋮ 메뉴</strong> 또는 하단 메뉴를 탭해요</div></div>
+        <div class="guide-step"><div class="g-num">3</div><div class="g-text"><strong>"홈 화면에 추가"</strong> 또는 <strong>"앱 설치"</strong>를 선택해요</div></div>
+        <div class="guide-step"><div class="g-num">4</div><div class="g-text"><strong>"추가"</strong>를 탭하면 홈 화면에 AI 손주 아이콘이 생겨요 ✅</div></div>
+        <div style="margin-top:12px;padding:10px 12px;background:#FFF0E6;border-radius:10px;font-size:12px;color:#C96830;line-height:1.6;">
+          ⚠️ 현재 로컬 파일로 실행 중이에요.<br>
+          <strong>Netlify에 업로드하면</strong> 자동 설치 버튼이 활성화됩니다.
+        </div>`;
+    }
+  }
+}
+
+// ── 5. 설치 가이드 (iOS 안내 포함) ──
+function openGuide(){
+  document.getElementById('guideOverlay').classList.add('show');
+  // iOS 감지
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+  if(isIOS) switchGuide('ios');
+}
+function closeGuide(){document.getElementById('guideOverlay').classList.remove('show');}
+function switchGuide(os){
+  ['android','ios'].forEach(o=>{
+    document.getElementById('guide-'+o).style.display=o===os?'flex':'none';
+    document.getElementById('tab-'+o).classList.toggle('active',o===os);
+  });
+  // guide-steps는 flex가 아닌 column이므로 수정
+  ['android','ios'].forEach(o=>{
+    document.getElementById('guide-'+o).style.display=o===os?'flex':'none';
+    document.getElementById('guide-'+o).style.flexDirection='column';
+  });
+}
+
+// ── 6. 범용 공유 (Web Share API) ──
+function shareApp(){
+  const url = location.href;
+  const title = 'AI 손주 - 건강 안부 챗봇';
+  const text  = '식사 사진 한 장으로 영양 분석! 어르신 건강을 AI가 챙겨드립니다 😊';
+  if(navigator.share){
+    navigator.share({title, text, url})
+      .catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(url).then(()=>{
+      showToast('🔗 링크가 복사되었습니다!');
+    }).catch(()=>{
+      showToast('주소창에서 링크를 복사해 주세요');
+    });
+  }
+}
+
+// ── 7. URL 파라미터 처리 ──
+window.addEventListener('load',()=>{
+  const params=new URLSearchParams(location.search);
+  const shortcut=params.get('shortcut');
+  const action=params.get('action');
+  if(shortcut==='meal') setTimeout(()=>{togglePanel();showToast('📷 식사 사진을 선택해 주세요!');},1000);
+  else if(shortcut==='med') setTimeout(()=>{document.getElementById('medBar').classList.add('show');renderMedBar();},1000);
+  if(action==='med-taken'){const id=params.get('id');if(id) setTimeout(()=>takeMedFromBar(id),800);}
+
+  // iOS 또는 로컬파일이면 → 수동 안내 배너 표시
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+  if(!isStandalone && !localStorage.getItem('pwa_dismissed') && localStorage.getItem('onboarded')){
+    setTimeout(()=>{
+      if(isIOS){
+        document.getElementById('installBanner').classList.add('show');
+        document.querySelector('.install-yes').textContent='설치 방법';
+        document.querySelector('.install-yes').onclick=openGuide;
+      } else if(!deferredPrompt){
+        // 안드로이드 로컬파일 환경: 배너 표시 (수동 안내)
+        document.getElementById('installBanner').classList.add('show');
+      }
+    },3000);
+  }
+});
+</script>
+</body>
+</html>
