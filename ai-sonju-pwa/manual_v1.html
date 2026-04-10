@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 손주 사용 설명서</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Gowun+Dodum&display=swap');
+
+/* ── 기본 설정 ── */
+:root {
+  --primary: #E8834A;
+  --primary-d: #C96830;
+  --primary-l: #FFF0E6;
+  --primary-ll: #FFF8F2;
+  --accent: #4A90D9;
+  --green: #4CAF7A;
+  --green-l: #E8F5E9;
+  --purple: #7C4DFF;
+  --purple-l: #F0EBFF;
+  --red: #E53E3E;
+  --yellow: #F6C90E;
+  --text: #1A0F00;
+  --text-m: #6B5040;
+  --text-l: #9A8070;
+  --border: #E8D5C0;
+  --bg: #FFFAF6;
+  --card: #FFFFFF;
+  --shadow: 0 4px 24px rgba(232,131,74,.10);
+  --shadow-lg: 0 12px 48px rgba(232,131,74,.15);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 16px;
+}
+
+/* ── 인쇄 스타일 ── */
+@media print {
+  .no-print { display: none !important; }
+  .page-break { page-break-before: always; }
+  body { font-size: 14px; }
+  .hero { padding: 30px 20px; }
+}
+
+/* ── 레이아웃 ── */
+.container { max-width: 800px; margin: 0 auto; padding: 0 20px; }
+
+/* ── 상단 네비 ── */
+.topbar {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; gap: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+}
+.topbar-logo { font-size: 22px; }
+.topbar-title { font-family: 'Gowun Dodum', sans-serif; font-size: 16px; color: var(--text); }
+.topbar-btns { margin-left: auto; display: flex; gap: 8px; }
+.topbar-btn {
+  padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+  background: var(--card); cursor: pointer; font-size: 13px;
+  font-family: 'Noto Sans KR', sans-serif; color: var(--text-m);
+  transition: all .2s; text-decoration: none; display: inline-block;
+}
+.topbar-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.topbar-btn.print-btn { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ── 목차 ── */
+.toc {
+  background: var(--primary-l);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin: 24px 0;
+}
+.toc-title {
+  font-size: 15px; font-weight: 700; color: var(--primary-d);
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.toc-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.toc-list li a {
+  text-decoration: none; color: var(--text-m); font-size: 14px;
+  display: flex; align-items: center; gap: 8px; transition: color .2s;
+}
+.toc-list li a:hover { color: var(--primary); }
+.toc-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--primary); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+
+/* ── 히어로 ── */
+.hero {
+  background: linear-gradient(135deg, var(--primary) 0%, #FFB347 100%);
+  padding: 48px 24px 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.hero-emoji { font-size: 64px; display: block; margin-bottom: 12px; position: relative; }
+.hero-title {
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 32px; color: #fff; margin-bottom: 8px; position: relative;
+}
+.hero-sub { font-size: 16px; color: rgba(255,255,255,.9); position: relative; line-height: 1.6; }
+.hero-badge {
+  display: inline-block; margin-top: 16px;
+  background: rgba(255,255,255,.2); color: #fff;
+  padding: 6px 16px; border-radius: 20px; font-size: 13px;
+  border: 1px solid rgba(255,255,255,.3); position: relative;
+}
+
+/* ── 섹션 ── */
+.section { padding: 40px 0; border-bottom: 1px solid var(--border); }
+.section:last-child { border-bottom: none; }
+.section-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 24px;
+}
+.section-num {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; flex-shrink: 0;
+}
+.section-title { font-size: 22px; font-weight: 700; color: var(--text); }
+.section-desc { font-size: 15px; color: var(--text-m); margin-bottom: 20px; line-height: 1.7; }
+
+/* ── 큰 글씨 강조 (어르신용) ── */
+.big-tip {
+  background: var(--primary-ll);
+  border-left: 4px solid var(--primary);
+  border-radius: 0 12px 12px 0;
+  padding: 16px 20px;
+  margin: 16px 0;
+  font-size: 16px;
+  color: var(--primary-d);
+  line-height: 1.7;
+}
+.big-tip strong { font-size: 18px; display: block; margin-bottom: 4px; }
+
+/* ── 단계 카드 ── */
+.steps { display: flex; flex-direction: column; gap: 16px; }
+.step-card {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  box-shadow: var(--shadow);
+  transition: transform .2s, box-shadow .2s;
+}
+.step-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.step-icon-wrap {
+  width: 52px; height: 52px; border-radius: 14px;
+  background: var(--primary-l);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; flex-shrink: 0;
+}
+.step-body { flex: 1; }
+.step-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.step-desc { font-size: 14px; color: var(--text-m); line-height: 1.7; }
+.step-sub {
+  margin-top: 10px; padding: 10px 14px;
+  background: var(--bg); border-radius: 10px;
+  font-size: 13px; color: var(--text-l); line-height: 1.6;
+}
+.step-badge {
+  display: inline-block; font-size: 12px; font-weight: 700;
+  padding: 2px 10px; border-radius: 10px; margin-bottom: 8px;
+}
+.badge-easy { background: var(--green-l); color: var(--green); }
+.badge-important { background: #FFF3CD; color: #856404; }
+.badge-tip { background: var(--purple-l); color: var(--purple); }
+
+/* ── 기능 그리드 ── */
+.feat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 8px;
+}
+@media (max-width: 480px) { .feat-grid { grid-template-columns: 1fr; } }
+
+.feat-card {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 16px;
+  box-shadow: var(--shadow);
+}
+.feat-icon { font-size: 28px; margin-bottom: 10px; }
+.feat-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.feat-desc { font-size: 13px; color: var(--text-m); line-height: 1.6; }
+
+/* ── 채팅 미리보기 ── */
+.chat-preview {
+  background: #F0F2F5;
+  border-radius: 16px;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+}
+.chat-msg { display: flex; gap: 10px; align-items: flex-end; }
+.chat-msg.user { flex-direction: row-reverse; }
+.chat-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #FFB347, #E8834A);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.chat-avatar.user-av {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+.chat-bubble {
+  max-width: 75%; padding: 12px 16px; border-radius: 18px;
+  font-size: 14px; line-height: 1.7; font-family: 'Gowun Dodum', sans-serif;
+}
+.chat-bubble.ai { background: #fff; border-bottom-left-radius: 4px; color: var(--text); }
+.chat-bubble.user { background: #4A90D9; color: #fff; border-bottom-right-radius: 4px; }
+.chat-label { font-size: 10px; color: var(--text-l); margin-top: 3px; }
+.chat-msg.user .chat-label { text-align: right; }
+
+/* ── 영양 카드 미리보기 ── */
+.nutrition-preview {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin: 16px 0;
+  box-shadow: var(--shadow);
+}
+.np-header {
+  background: linear-gradient(135deg, var(--primary), #FFB347);
+  padding: 14px 16px;
+  color: #fff;
+  font-size: 14px; font-weight: 700;
+}
+.np-body { padding: 16px; }
+.np-score-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.np-circle {
+  width: 60px; height: 60px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), #FFB347);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.np-score-num { font-size: 20px; font-weight: 900; color: #fff; line-height: 1; }
+.np-score-unit { font-size: 10px; color: rgba(255,255,255,.9); }
+.np-score-label { font-size: 15px; font-weight: 700; color: var(--text); }
+.np-score-sub { font-size: 12px; color: var(--text-m); }
+.np-bar-row { margin-bottom: 10px; }
+.np-bar-top { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+.np-bar-name { color: var(--text); font-weight: 500; }
+.np-bar-val { font-weight: 700; }
+.np-bar-bg { background: #F5E8D8; border-radius: 6px; height: 8px; overflow: hidden; }
+.np-bar-fill { height: 100%; border-radius: 6px; }
+.good { background: linear-gradient(90deg, #4CAF7A, #81C784); color: #2E7D32; }
+.ok   { background: linear-gradient(90deg, #FFB347, #E8834A); color: #E65100; }
+.low  { background: linear-gradient(90deg, #90CAF9, #42A5F5); color: #1565C0; }
+.np-rec { background: var(--bg); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
+.np-rec-title { font-size: 12px; font-weight: 700; color: var(--text-m); margin-bottom: 8px; }
+.np-rec-item { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; font-size: 12px; }
+.np-rec-item span:first-child { flex-shrink: 0; }
+
+/* ── 약 관리 미리보기 ── */
+.med-preview {
+  background: #EEF4FF;
+  border: 1.5px solid #BEE3F8;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.med-slot {
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.med-slot:last-child { margin-bottom: 0; }
+.med-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.med-info { flex: 1; }
+.med-time { font-size: 11px; color: var(--text-l); }
+.med-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.med-dose { font-size: 12px; color: var(--text-m); }
+.med-btn {
+  padding: 6px 14px; border-radius: 20px; border: none;
+  font-size: 12px; font-family: 'Noto Sans KR', sans-serif; cursor: default;
+}
+.med-btn.taken { background: var(--green-l); color: var(--green); }
+.med-btn.pending { background: #EEF4FF; color: var(--accent); }
+
+/* ── 설정 가이드 ── */
+.setting-steps {
+  counter-reset: step;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.setting-step {
+  display: flex; gap: 14px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  align-items: flex-start;
+}
+.setting-step-num {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+}
+.setting-step-text { flex: 1; }
+.setting-step-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.setting-step-desc { font-size: 13px; color: var(--text-m); line-height: 1.6; }
+
+/* ── AI 선택 카드 ── */
+.ai-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px; margin: 16px 0;
+}
+@media (max-width: 500px) { .ai-cards { grid-template-columns: 1fr; } }
+.ai-card {
+  border: 2px solid var(--border);
+  border-radius: 14px; padding: 16px 12px;
+  text-align: center; background: var(--card);
+  box-shadow: var(--shadow);
+}
+.ai-card-icon { font-size: 28px; margin-bottom: 8px; }
+.ai-card-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.ai-card-desc { font-size: 11px; color: var(--text-m); line-height: 1.5; margin-bottom: 8px; }
+.ai-card-badge {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 8px;
+}
+.free { background: var(--green-l); color: var(--green); }
+.paid { background: #FFF3CD; color: #856404; }
+
+/* ── FAQ ── */
+.faq-list { display: flex; flex-direction: column; gap: 10px; }
+.faq-item {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.faq-q {
+  padding: 16px 20px;
+  font-size: 15px; font-weight: 600; color: var(--text);
+  cursor: pointer;
+  display: flex; align-items: center; gap: 10px;
+  user-select: none;
+}
+.faq-q::before {
+  content: 'Q';
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 900; flex-shrink: 0;
+}
+.faq-q::after { content: '▾'; margin-left: auto; color: var(--text-l); transition: transform .2s; }
+.faq-item.open .faq-q::after { transform: rotate(180deg); }
+.faq-a {
+  display: none;
+  padding: 0 20px 16px 56px;
+  font-size: 14px; color: var(--text-m); line-height: 1.7;
+}
+.faq-item.open .faq-a { display: block; }
+
+/* ── 알림 예시 ── */
+.notify-example {
+  background: var(--green-l);
+  border: 1.5px solid #A5D6A7;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin: 12px 0;
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.notify-example .n-icon { font-size: 24px; flex-shrink: 0; }
+.notify-example .n-text { flex: 1; }
+.notify-example .n-title { font-size: 14px; font-weight: 700; color: #2E7D32; margin-bottom: 4px; }
+.notify-example .n-body { font-size: 13px; color: #388E3C; line-height: 1.6; }
+
+/* ── 푸터 ── */
+.footer {
+  background: var(--text);
+  color: rgba(255,255,255,.7);
+  padding: 32px 24px;
+  text-align: center;
+  margin-top: 40px;
+}
+.footer-title { color: #fff; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.footer-sub { font-size: 13px; line-height: 1.7; }
+
+/* ── 유틸 ── */
+.text-center { text-align: center; }
+.mt8 { margin-top: 8px; }
+.mt16 { margin-top: 16px; }
+.mt24 { margin-top: 24px; }
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+.highlight { color: var(--primary); font-weight: 700; }
+.tag {
+  display: inline-block; font-size: 12px; font-weight: 600;
+  padding: 3px 10px; border-radius: 10px;
+  background: var(--primary-l); color: var(--primary-d);
+  margin-right: 4px;
+}
+
+/* ── 애니메이션 ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.section { animation: fadeUp .5s ease both; }
+.section:nth-child(2) { animation-delay: .05s; }
+.section:nth-child(3) { animation-delay: .10s; }
+.section:nth-child(4) { animation-delay: .15s; }
+.section:nth-child(5) { animation-delay: .20s; }
+</style>
+</head>
+<body>
+
+<!-- 상단 네비 -->
+<div class="topbar no-print">
+  <span class="topbar-logo">🤖</span>
+  <span class="topbar-title">AI 손주 사용 설명서</span>
+  <div class="topbar-btns">
+    <button class="topbar-btn print-btn" onclick="window.print()">🖨️ 인쇄</button>
+    <a class="topbar-btn" href="#faq">❓ FAQ</a>
+  </div>
+</div>
+
+<!-- 히어로 -->
+<div class="hero">
+  <span class="hero-emoji">🤖</span>
+  <h1 class="hero-title">AI 손주 사용 설명서</h1>
+  <p class="hero-sub">
+    식사 사진 한 장으로 영양 분석,<br>
+    약 복용 알림, 자녀 안부 알림까지<br>
+    쉽고 따뜻하게 사용하는 방법을 알려드려요
+  </p>
+  <span class="hero-badge">📖 처음 사용하시는 분도 5분이면 시작할 수 있어요!</span>
+</div>
+
+<div class="container">
+
+  <!-- 목차 -->
+  <div class="toc no-print">
+    <div class="toc-title">📋 목차</div>
+    <ul class="toc-list">
+      <li><a href="#s1"><span class="toc-num">1</span> AI 손주란 무엇인가요?</a></li>
+      <li><a href="#s2"><span class="toc-num">2</span> 처음 시작하기 (설정 방법)</a></li>
+      <li><a href="#s3"><span class="toc-num">3</span> 식사 사진 보내기 & 영양 분석</a></li>
+      <li><a href="#s4"><span class="toc-num">4</span> 약 복용 관리</a></li>
+      <li><a href="#s5"><span class="toc-num">5</span> 자녀 알림 설정</a></li>
+      <li><a href="#s6"><span class="toc-num">6</span> AI 선택하기</a></li>
+      <li><a href="#s7"><span class="toc-num">7</span> 홈 화면에 앱으로 추가하기</a></li>
+      <li><a href="#faq"><span class="toc-num">❓</span> 자주 묻는 질문</a></li>
+    </ul>
+  </div>
+
+  <!-- 1. AI 손주란 -->
+  <div class="section" id="s1">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <h2 class="section-title">AI 손주란 무엇인가요?</h2>
+    </div>
+    <p class="section-desc">
+      AI 손주는 인공지능이 손주처럼 매일 어르신의 건강을 챙겨드리는 서비스입니다.<br>
+      복잡한 기기 조작 없이, 평소 사진 찍어 보내듯 간단하게 사용할 수 있어요.
+    </p>
+
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon">📷</div>
+        <div class="feat-title">식사 사진 영양 분석</div>
+        <div class="feat-desc">사진 한 장을 보내면 AI가 3초 안에 영양소를 분석하고 점수를 드려요</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">💊</div>
+        <div class="feat-title">약 복용 알림</div>
+        <div class="feat-desc">설정한 시간이 되면 자동으로 알림이 오고 복용 여부를 확인해요</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📱</div>
+        <div class="feat-title">자녀 자동 알림</div>
+        <div class="feat-desc">식사·약 복용 정보가 자녀에게 자동으로 전달돼요</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">💬</div>
+        <div class="feat-title">따뜻한 대화</div>
+        <div class="feat-desc">AI 손주와 안부 인사, 건강 조언 등 편하게 대화할 수 있어요</div>
+      </div>
+    </div>
+
+    <div class="big-tip mt16">
+      <strong>💡 이런 분께 딱 맞아요!</strong>
+      혼자 사시는 어르신, 자녀가 멀리 사는 경우, 매일 약을 드셔야 하는 분, 건강한 식사를 챙기고 싶으신 분
+    </div>
+  </div>
+
+  <!-- 2. 처음 시작하기 -->
+  <div class="section page-break" id="s2">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <h2 class="section-title">처음 시작하기 (설정 방법)</h2>
+    </div>
+    <p class="section-desc">
+      처음 앱을 열면 설정 화면이 나타나요. 아래 순서대로 입력해 주세요.<br>
+      <span class="highlight">5~10분이면 충분해요!</span>
+    </p>
+
+    <div class="setting-steps">
+      <div class="setting-step">
+        <div class="setting-step-num">1</div>
+        <div class="setting-step-text">
+          <div class="setting-step-title">⚙️ 오른쪽 위 톱니바퀴 버튼을 눌러요</div>
+          <div class="setting-step-desc">화면 오른쪽 위에 있는 <strong>⚙️ 버튼</strong>을 눌러 설정 화면을 여세요.</div>
+        </div>
+      </div>
+      <div class="setting-step">
+        <div class="setting-step-num">2</div>
+        <div class="setting-step-text">
+          <div class="setting-step-title">👴 "기본" 탭 — 어르신 정보 입력</div>
+          <div class="setting-step-desc">
+            성함과 나이를 입력해 주세요.<br>
+            입력하면 AI 손주가 이름으로 불러드려요. 예) <em>"복순 어르신, 안녕하세요!"</em>
+          </div>
+        </div>
+      </div>
+      <div class="setting-step">
+        <div class="setting-step-num">3</div>
+        <div class="setting-step-text">
+          <div class="setting-step-title">👨‍👩‍👧 자녀 연락처 추가</div>
+          <div class="setting-step-desc">
+            자녀 이름과 전화번호를 입력하고 <strong>"추가"</strong> 버튼을 누르세요.<br>
+            여러 명 등록 가능해요. 식사 사진을 보낼 때마다 자녀에게 자동 알림이 가요.
+          </div>
+        </div>
+      </div>
+      <div class="setting-step">
+        <div class="setting-step-num">4</div>
+        <div class="setting-step-text">
+          <div class="setting-step-title">💊 "약 관리" 탭 — 복용 약 등록</div>
+          <div class="setting-step-desc">
+            약 이름, 용량, 복용 시간, 알람 시간을 입력하고 <strong>"추가"</strong>를 누르세요.<br>
+            예) 혈압약 · 1정 · 아침 식후 · 오전 8:00
+          </div>
+        </div>
+      </div>
+      <div class="setting-step">
+        <div class="setting-step-num">5</div>
+        <div class="setting-step-text">
+          <div class="setting-step-title">📱 "알림" 탭 — 알림 항목 선택</div>
+          <div class="setting-step-desc">
+            식사 알림, 약 복용 알림, 미복용 경고 등 원하는 항목만 켜두세요.<br>
+            처음에는 모두 켜두시는 걸 추천드려요.
+          </div>
+        </div>
+      </div>
+      <div class="setting-step">
+        <div class="setting-step-num">6</div>
+        <div class="setting-step-text">
+          <div class="setting-step-title">💾 "설정 저장" 버튼 클릭</div>
+          <div class="setting-step-desc">
+            맨 아래 주황색 <strong>"설정 저장"</strong> 버튼을 눌러야 저장돼요.<br>
+            <span class="highlight">이 버튼을 꼭 눌러 주세요!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="big-tip mt16">
+      <strong>✅ 설정 완료 확인 방법</strong>
+      화면 위쪽에 "김복순님 · 자녀 2명 · 약 3종" 처럼 정보가 표시되면 설정이 완료된 거예요!
+    </div>
+  </div>
+
+  <!-- 3. 식사 사진 -->
+  <div class="section page-break" id="s3">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <h2 class="section-title">식사 사진 보내기 & 영양 분석</h2>
+    </div>
+    <p class="section-desc">
+      식사 사진을 보내면 AI가 영양소를 분석하고 점수를 알려드려요.<br>
+      전문 영양사처럼 꼼꼼하게 분석하지만, 쉬운 말로 설명해 드려요.
+    </p>
+
+    <div class="steps">
+      <div class="step-card">
+        <div class="step-icon-wrap">📷</div>
+        <div class="step-body">
+          <span class="step-badge badge-easy">쉬워요</span>
+          <div class="step-title">1단계 — 카메라 버튼을 누르세요</div>
+          <div class="step-desc">화면 아래 <strong>📷 카메라 버튼</strong>을 누르면 메뉴가 나와요.</div>
+          <div class="step-sub">
+            📸 <strong>카메라 촬영</strong> — 지금 바로 식사 사진 찍기<br>
+            🖼️ <strong>갤러리 선택</strong> — 저장된 사진 가져오기<br>
+            🍚 <strong>샘플 선택</strong> — 샘플 사진으로 테스트해보기
+          </div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-icon-wrap">📤</div>
+        <div class="step-body">
+          <span class="step-badge badge-easy">쉬워요</span>
+          <div class="step-title">2단계 — "이 사진 전송하기" 버튼을 누르세요</div>
+          <div class="step-desc">사진을 선택하면 미리보기가 나와요. 주황색 버튼을 눌러 전송하세요.</div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-icon-wrap">⏱️</div>
+        <div class="step-body">
+          <span class="step-badge badge-easy">자동이에요</span>
+          <div class="step-title">3단계 — 3초 안에 결과가 나와요!</div>
+          <div class="step-desc">AI가 사진을 분석해서 아래와 같은 영양 분석 카드를 보내드려요.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 영양 카드 미리보기 -->
+    <div class="nutrition-preview mt24">
+      <div class="np-header">🥗 영양 분석 리포트 — AI 영양 컨설턴트가 분석했어요</div>
+      <div class="np-body">
+        <div class="np-score-row">
+          <div class="np-circle">
+            <span class="np-score-num">88</span>
+            <span class="np-score-unit">점</span>
+          </div>
+          <div>
+            <div class="np-score-label">아주 훌륭해요! 🎉</div>
+            <div class="np-score-sub">균형 잡힌 한식 식단으로 건강하게 드셨어요</div>
+          </div>
+        </div>
+        <div class="np-bar-row">
+          <div class="np-bar-top"><span class="np-bar-name">단백질</span><span class="np-bar-val good">잘 드셨어요</span></div>
+          <div class="np-bar-bg"><div class="np-bar-fill good" style="width:80%"></div></div>
+        </div>
+        <div class="np-bar-row">
+          <div class="np-bar-top"><span class="np-bar-name">채소·식이섬유</span><span class="np-bar-val good">잘 드셨어요</span></div>
+          <div class="np-bar-bg"><div class="np-bar-fill good" style="width:75%"></div></div>
+        </div>
+        <div class="np-bar-row">
+          <div class="np-bar-top"><span class="np-bar-name">칼슘</span><span class="np-bar-val low">조금 부족해요</span></div>
+          <div class="np-bar-bg"><div class="np-bar-fill low" style="width:45%"></div></div>
+        </div>
+        <div class="np-rec">
+          <div class="np-rec-title">🍽️ 오늘 추천 영양식</div>
+          <div class="np-rec-item"><span>🥛</span><span>따뜻한 두유 한 컵 — 칼슘이 풍부해서 뼈 건강에 아주 좋아요</span></div>
+          <div class="np-rec-item"><span>🥚</span><span>삶은 계란 1개 — 부족한 단백질과 비타민D를 보충할 수 있어요</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="big-tip">
+      <strong>🏅 7일 연속 달성하면 특별 보상이!</strong>
+      매일 식사 사진을 보내면 상단에 별⭐이 쌓여요. 7일 연속으로 보내면 자녀에게 "이번 주 개근상" 알림이 자동으로 발송됩니다!
+    </div>
+
+    <!-- 채팅 예시 -->
+    <h3 style="font-size:15px;font-weight:700;color:var(--text);margin:20px 0 12px;">💬 AI 손주와 대화 예시</h3>
+    <div class="chat-preview">
+      <div class="chat-msg">
+        <div class="chat-avatar">🤖</div>
+        <div>
+          <div class="chat-bubble ai">안녕하세요! 오늘 아침 식사 사진을 보내주시면 제가 분석해 드릴게요 😊</div>
+          <div class="chat-label">AI 손주</div>
+        </div>
+      </div>
+      <div class="chat-msg user">
+        <div class="chat-avatar user-av">👵</div>
+        <div>
+          <div class="chat-bubble user">📷 오늘 식사 사진을 보냈어요!</div>
+          <div class="chat-label">어르신</div>
+        </div>
+      </div>
+      <div class="chat-msg">
+        <div class="chat-avatar">🤖</div>
+        <div>
+          <div class="chat-bubble ai">와~ 이렇게 정성스러운 밥상이라니, 오늘 아침부터 최고십니다! 😊 고등어구이에 나물까지, 몸에 좋은 것들로 가득 차렸네요. 이 나물, 혹시 직접 무치신 건가요? 🥬</div>
+          <div class="chat-label">AI 손주</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 약 복용 관리 -->
+  <div class="section page-break" id="s4">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <h2 class="section-title">약 복용 관리</h2>
+    </div>
+    <p class="section-desc">
+      매일 드셔야 하는 약을 등록하면 알람이 울리고, 복용 여부를 간단하게 체크할 수 있어요.
+    </p>
+
+    <div class="steps">
+      <div class="step-card">
+        <div class="step-icon-wrap">💊</div>
+        <div class="step-body">
+          <span class="step-badge badge-important">설정 필요</span>
+          <div class="step-title">약 등록하기 (처음 한 번만)</div>
+          <div class="step-desc">⚙️ 설정 → 💊 약 관리 탭에서 등록하세요.</div>
+          <div class="step-sub">
+            입력 항목:<br>
+            • <strong>약 이름</strong> — 예) 혈압약, 당뇨약, 비타민<br>
+            • <strong>용량</strong> — 예) 1정, 2알<br>
+            • <strong>복용 시간</strong> — 아침 식후 / 점심 식후 / 저녁 식후 / 취침 전<br>
+            • <strong>알람 시간</strong> — 예) 오전 8:00<br>
+            • <strong>메모</strong> (선택) — 예) 식사 30분 후 복용
+          </div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-icon-wrap">⏰</div>
+        <div class="step-body">
+          <span class="step-badge badge-easy">자동이에요</span>
+          <div class="step-title">알람 시간이 되면 자동 알림이 와요</div>
+          <div class="step-desc">설정한 시간에 채팅 창에 메시지가 오고, 알림 팝업도 떠요.</div>
+          <div class="step-sub">
+            "⏰ 혈압약 드실 시간이에요! (아침 식후 08:00) 1정 챙겨드세요 😊"
+          </div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-icon-wrap">✅</div>
+        <div class="step-body">
+          <span class="step-badge badge-easy">쉬워요</span>
+          <div class="step-title">약을 드신 후 "먹었어요" 버튼을 눌러요</div>
+          <div class="step-desc">상단 💊 버튼을 누르면 오늘 복용 현황이 나와요. 해당 약의 <strong>"먹었어요"</strong> 버튼을 누르면 완료!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 약 현황 미리보기 -->
+    <div class="med-preview mt24">
+      <div style="font-size:13px;font-weight:700;color:#2B6CB0;margin-bottom:12px;display:flex;justify-content:space-between;">
+        <span>💊 오늘 약 복용 현황</span>
+        <span style="color:var(--green)">2/3 완료</span>
+      </div>
+      <div class="med-slot">
+        <div class="med-dot" style="background:var(--green)"></div>
+        <div class="med-info">
+          <div class="med-time">아침 식후 · 08:00</div>
+          <div class="med-name">혈압약</div>
+          <div class="med-dose">1정</div>
+        </div>
+        <button class="med-btn taken">✅ 복용완료</button>
+      </div>
+      <div class="med-slot">
+        <div class="med-dot" style="background:var(--green)"></div>
+        <div class="med-info">
+          <div class="med-time">아침 식후 · 08:00</div>
+          <div class="med-name">비타민D</div>
+          <div class="med-dose">1알</div>
+        </div>
+        <button class="med-btn taken">✅ 복용완료</button>
+      </div>
+      <div class="med-slot">
+        <div class="med-dot" style="background:#BEE3F8"></div>
+        <div class="med-info">
+          <div class="med-time">저녁 식후 · 19:00</div>
+          <div class="med-name">당뇨약</div>
+          <div class="med-dose">1정</div>
+        </div>
+        <button class="med-btn pending">💊 먹었어요</button>
+      </div>
+    </div>
+
+    <div class="big-tip">
+      <strong>⚠️ 1시간이 지나도 안 드시면?</strong>
+      복용 시간 1시간이 지나도 "먹었어요"를 누르지 않으면 자녀에게 자동으로 알림이 가요. 걱정하지 않아도 자녀가 챙겨줄 거예요!
+    </div>
+  </div>
+
+  <!-- 5. 자녀 알림 -->
+  <div class="section" id="s5">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <h2 class="section-title">자녀 알림 설정</h2>
+    </div>
+    <p class="section-desc">
+      자녀가 바빠서 연락하기 어렵더라도 AI 손주가 대신 소식을 전해드려요.<br>
+      어떤 알림을 보낼지 항목별로 선택할 수 있어요.
+    </p>
+
+    <div class="notify-example">
+      <div class="n-icon">🍚</div>
+      <div class="n-text">
+        <div class="n-title">식사 알림</div>
+        <div class="n-body">"오늘 어머니가 아침 식사를 맛있게 하셨습니다 😊 건강 점수 88점!"</div>
+      </div>
+    </div>
+    <div class="notify-example">
+      <div class="n-icon">💊</div>
+      <div class="n-text">
+        <div class="n-title">약 복용 완료 알림</div>
+        <div class="n-body">"어머니가 혈압약을 복용하셨습니다 💊"</div>
+      </div>
+    </div>
+    <div class="notify-example" style="background:#FFF3CD;border-color:#FFE082;">
+      <div class="n-icon">⚠️</div>
+      <div class="n-text">
+        <div class="n-title" style="color:#856404;">약 미복용 경고 알림</div>
+        <div class="n-body" style="color:#8D6E0A;">"어머니가 혈압약을 아직 복용하지 않으셨습니다. 확인 부탁드립니다 ⚠️"</div>
+      </div>
+    </div>
+
+    <div class="big-tip mt16">
+      <strong>📱 알림 ON/OFF 설정 위치</strong>
+      ⚙️ 설정 → 📱 알림 탭에서 항목별로 켜고 끌 수 있어요. 원치 않는 알림은 끄면 됩니다.
+    </div>
+  </div>
+
+  <!-- 6. AI 선택 -->
+  <div class="section page-break" id="s6">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <h2 class="section-title">AI 선택하기</h2>
+    </div>
+    <p class="section-desc">
+      AI 손주는 3가지 AI 중 하나를 선택해서 사용할 수 있어요.<br>
+      처음에는 <span class="highlight">무료로 시작할 수 있는 Gemini</span>를 추천드려요.
+    </p>
+
+    <div class="ai-cards">
+      <div class="ai-card">
+        <div class="ai-card-icon">🟣</div>
+        <div class="ai-card-name">Claude</div>
+        <div class="ai-card-desc">한국어 감성 답변 최고 수준. 따뜻한 대화가 필요할 때</div>
+        <span class="ai-card-badge free">가입 시 무료</span>
+      </div>
+      <div class="ai-card">
+        <div class="ai-card-icon">🟢</div>
+        <div class="ai-card-name">ChatGPT</div>
+        <div class="ai-card-desc">가장 널리 알려진 AI. 다양한 질문에 답변 가능</div>
+        <span class="ai-card-badge paid">카드 등록 필요</span>
+      </div>
+      <div class="ai-card">
+        <div class="ai-card-icon">🔵</div>
+        <div class="ai-card-name">Gemini</div>
+        <div class="ai-card-desc">구글 AI. 구글 계정만 있으면 바로 무료로 시작 가능</div>
+        <span class="ai-card-badge free">완전 무료</span>
+      </div>
+    </div>
+
+    <div class="steps mt16">
+      <div class="step-card">
+        <div class="step-icon-wrap">🔑</div>
+        <div class="step-body">
+          <span class="step-badge badge-tip">API 키란?</span>
+          <div class="step-title">API 키 발급 방법 (Gemini 추천)</div>
+          <div class="step-desc">API 키는 AI 서비스를 사용하기 위한 비밀번호 같은 거예요.</div>
+          <div class="step-sub">
+            1. <a href="https://aistudio.google.com/app/apikey" style="color:var(--accent);">aistudio.google.com</a> 접속<br>
+            2. 구글 계정으로 로그인<br>
+            3. "Create API key" 버튼 클릭<br>
+            4. 생성된 키(AIza로 시작) 복사, 모델선택:Gemini 2.5 Flash(최신,유료)<br>
+            5. AI 손주 ⚙️ 설정 → 🤖 AI 탭 → Gemini 선택 → 키 붙여넣기 → 저장
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="big-tip">
+      <strong>🤖 API 키 없어도 사용 가능해요!</strong>
+      API 키를 입력하지 않아도 "데모 모드"로 기본 기능을 체험할 수 있어요. 실제 AI 분석을 원하실 때 입력하세요.
+    </div>
+  </div>
+
+  <!-- 7. 홈 화면 추가 -->
+  <div class="section" id="s7">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <h2 class="section-title">홈 화면에 앱으로 추가하기</h2>
+    </div>
+    <p class="section-desc">
+      스마트폰 홈 화면에 추가하면 앱 아이콘을 탭하는 것만으로 바로 열려요.<br>
+      주소를 외울 필요가 없어요!
+    </p>
+
+    <div class="feat-grid">
+      <div class="feat-card" style="border-color:#A5D6A7;">
+        <div class="feat-icon">🤖</div>
+        <div class="feat-title" style="color:#2E7D32;">안드로이드 폰</div>
+        <div class="feat-desc" style="font-size:14px;line-height:1.8;">
+          1. <strong>크롬 브라우저</strong>로 열기<br>
+          2. 주소창 옆 <strong>⋮ 메뉴</strong> 탭<br>
+          3. <strong>"홈 화면에 추가"</strong> 선택<br>
+          4. <strong>"추가"</strong> 탭 → 완료! ✅
+        </div>
+      </div>
+      <div class="feat-card" style="border-color:#BEE3F8;">
+        <div class="feat-icon">🍎</div>
+        <div class="feat-title" style="color:#1565C0;">아이폰</div>
+        <div class="feat-desc" style="font-size:14px;line-height:1.8;">
+          1. <strong>사파리</strong>로 열기<br>
+          2. 아래 <strong>공유 버튼 □↑</strong> 탭<br>
+          3. <strong>"홈 화면에 추가"</strong> 탭<br>
+          4. 오른쪽 위 <strong>"추가"</strong> → 완료! ✅
+        </div>
+      </div>
+    </div>
+
+    <div class="big-tip mt16">
+      <strong>📲 설치 후에는 이렇게 사용하세요</strong>
+      홈 화면의 🤖 AI 손주 아이콘을 탭하면 앱처럼 전체 화면으로 열려요. 인터넷 주소를 다시 입력할 필요가 없어요!
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="section" id="faq">
+    <div class="section-header">
+      <div class="section-num">❓</div>
+      <h2 class="section-title">자주 묻는 질문</h2>
+    </div>
+
+    <div class="faq-list">
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-q">사진을 보내도 아무 반응이 없어요</div>
+        <div class="faq-a">API 키가 입력되지 않은 경우 데모 모드로 동작합니다. ⚙️ 설정 → 🤖 AI 탭에서 API 키를 입력하고 저장해 보세요. 키가 없으면 샘플 사진 선택 후 데모 답변을 확인해 보세요.</div>
+      </div>
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-q">약 알람이 오지 않아요</div>
+        <div class="faq-a">앱이 완전히 닫혀 있으면 앱 내 알람은 울리지 않아요. 알람 시간에 앱을 열어두시거나, 스마트폰의 알림 설정에서 이 앱의 알림이 허용되어 있는지 확인해 주세요. 또한 설정 저장을 누르셨는지 확인해 주세요.</div>
+      </div>
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-q">자녀에게 실제로 문자가 가나요?</div>
+        <div class="faq-a">현재 버전은 앱 안에서 "자녀 알림이 발송되었습니다"라고 보여주는 시뮬레이션 기능입니다. 실제 문자·카카오 발송은 카카오톡 채널 연동 버전에서 지원됩니다. 기관 담당자에게 문의해 주세요.</div>
+      </div>
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-q">설정이 저장되지 않아요</div>
+        <div class="faq-a">설정 화면 맨 아래의 주황색 "💾 설정 저장" 버튼을 반드시 눌러야 저장돼요. 버튼을 누른 후 "설정이 저장되었습니다" 메시지가 나오면 정상 저장된 거예요.</div>
+      </div>
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-q">API 키가 뭔가요? 꼭 필요한가요?</div>
+        <div class="faq-a">API 키는 AI 서비스를 사용하기 위한 인증번호 같은 거예요. 없어도 기본 기능(데모 모드)은 사용 가능하지만, 실제 AI가 사진을 분석하려면 필요해요. Gemini(구글)는 구글 계정만 있으면 무료로 발급받을 수 있어요.</div>
+      </div>
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-q">카카오톡 없이도 사용할 수 있나요?</div>
+        <div class="faq-a">네! PWA 버전은 카카오톡 없이 웹 브라우저로 바로 사용할 수 있어요. 기관 담당자에게 앱 링크를 받아서 열면 됩니다. 홈 화면에 추가하면 앱처럼 사용할 수 있어요.</div>
+      </div>
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-q">개인 정보가 안전한가요?</div>
+        <div class="faq-a">입력한 이름, 자녀 연락처, 약 정보는 본인 기기에만 저장되고 외부 서버로 전송되지 않아요. 식사 사진은 AI 분석 후 즉시 삭제됩니다. AI API 사업자(Anthropic, OpenAI, Google)의 개인정보 처리 방침을 따릅니다.</div>
+      </div>
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-q">여러 기관에서 같이 사용할 수 있나요?</div>
+        <div class="faq-a">네! 기관마다 별도로 설정하면 여러 기관에서 독립적으로 사용할 수 있어요. 각 기관이 원하는 AI(Claude, ChatGPT, Gemini)를 선택해서 사용할 수 있습니다.</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- 푸터 -->
+<div class="footer">
+  <div class="footer-title">🚀 RESET BUTTON</div>
+  <div class="footer-sub">
+    사람의 마음을 읽고 기술의 내일을 씁니다. 가장 인간적인 AI 기술 RESET BUTTON<br>
+    * 문의: 기획 및 개발자 : 남승우,  E-mail: iamnsw@naver.com
+  </div>
+</div>
+
+<script>
+// FAQ 토글
+document.querySelectorAll('.faq-q').forEach(q=>{
+  q.addEventListener('click',()=>{
+    q.parentElement.classList.toggle('open');
+  });
+});
+
+// 부드러운 스크롤
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{
+    e.preventDefault();
+    const target=document.querySelector(a.getAttribute('href'));
+    if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+});
+
+// 스크롤 애니메이션
+const obs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting) e.target.style.opacity='1';
+  });
+},{threshold:0.1});
+document.querySelectorAll('.section').forEach(s=>{
+  s.style.opacity='0';
+  s.style.animation='none';
+  obs.observe(s);
+});
+// 처음부터 보이는 섹션
+setTimeout(()=>{
+  document.querySelectorAll('.section').forEach(s=>{
+    s.style.animation='fadeUp .6s ease both';
+    s.style.opacity='';
+  });
+},100);
+</script>
+</body>
+</html>
