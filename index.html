@@ -2156,19 +2156,17 @@ document.addEventListener('click',e=>{ if(!e.target.closest('.test-call-btn')&&!
 // ── 전화 시작 (수신 화면) ──
 function startCall(type){
   if(callState.active) return;
-  callState = { active:true, type, step:0, timer:null, timerSec:0, recognition:null, speaking:false };
-  const script = CALL_SCRIPTS[type];
+  callState = { active:true, type, step:0, timer:null, timerSec:0, recognition:null, speaking:false, callHistory:[] };
+  const subtitleMap = { med:'약 복용 확인', meal:'아침 식사 확인', evening:'저녁 안부', hello:'일반 안부' };
   const overlay = document.getElementById('callOverlay');
   overlay.className = 'call-overlay ringing';
   document.getElementById('callStatus').textContent = '전화가 왔습니다...';
-  document.getElementById('callSubtitle').textContent = script.subtitle;
+  document.getElementById('callSubtitle').textContent = subtitleMap[type] || '안부 전화';
   document.getElementById('callTimer').textContent = '';
   document.getElementById('callCaption').textContent = 'AI 손주에게서 전화가 왔어요 😊';
   document.getElementById('userCaption').classList.remove('show');
   document.getElementById('answerBtn').style.display = 'flex';
   setWaveSilent(true);
-
-  // 벨소리 효과음
   playRingtone();
 }
 
@@ -2616,47 +2614,12 @@ function startApp(){
 }
 
 // ── 2. Service Worker 인라인 등록 ──
+// ServiceWorker: /sw.js 파일이 있을 때만 등록 (blob URL 방식 제거)
 if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    const swCode = `
-const CACHE = 'ai-grandchild-v1';
-const OFFLINE_ASSETS = ['/'];
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(OFFLINE_ASSETS)));
-  self.skipWaiting();
-});
-self.addEventListener('activate', e => { self.clients.claim(); });
-self.addEventListener('fetch', e => {
-  if(e.request.url.includes('api.anthropic')||e.request.url.includes('openai')||e.request.url.includes('googleapis')||e.request.url.includes('unsplash')) return;
-  e.respondWith(
-    fetch(e.request)
-      .then(res => {
-        const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
-        return res;
-      })
-      .catch(() => caches.match(e.request))
-  );
-});
-self.addEventListener('push', e => {
-  const d = e.data ? e.data.json() : {};
-  e.waitUntil(self.registration.showNotification(d.title||'AI 손주',{body:d.body||'약 드실 시간이에요! 💊',icon:'/icon-192.png',tag:d.tag||'med',requireInteraction:true}));
-});
-    `;
-    const blob = new Blob([swCode], {type:'application/javascript'});
-    const swUrl = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(swUrl)
-      .then(reg=>{ console.log('SW 등록 완료'); requestNotifPerm(reg); })
-      .catch(e=>console.log('SW 실패(무시 가능):', e.message));
+  navigator.serviceWorker.register('/sw.js').catch(()=>{
+    // sw.js 없으면 무시 — 오프라인 기능만 비활성화됨
   });
 }
-
-async function requestNotifPerm(reg){
-  if(!('Notification' in window)) return;
-  const perm = await Notification.requestPermission();
-  if(perm==='granted') console.log('푸시 알림 허용');
-}
-
 // ── 3. 시스템 푸시 알림 (약 알람) ──
 function sendNativeNotif(title, body, tag){
   if(Notification.permission!=='granted') return;
