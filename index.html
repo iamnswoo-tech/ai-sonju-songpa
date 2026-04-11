@@ -1054,14 +1054,6 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--warm-bg);min-height:
   </div>
 </div>
 
-<div id="callTextInput" style="display:none;position:fixed;bottom:160px;left:50%;transform:translateX(-50%);width:calc(100% - 48px);max-width:400px;z-index:310;">
-      <div style="display:flex;gap:8px;background:rgba(255,255,255,.15);border-radius:24px;padding:10px 14px;backdrop-filter:blur(8px);">
-        <input id="callTextBox" type="text"
-          style="flex:1;background:none;border:none;outline:none;color:#fff;font-size:15px;font-family:'Noto Sans KR',sans-serif;"
-          placeholder="답변을 입력하세요..."/>
-        <button onclick="submitCallText()"
-          style="background:var(--primary);border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">↑</button>
-      </div>
     </div>
 
 <!-- 전화 테스트 버튼 -->
@@ -1079,6 +1071,9 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--warm-bg);min-height:
 <div class="toast" id="toast"></div>
 
 <script>
+// ── 전화 상태 (최상단 선언) ──
+let callState = { active:false, type:'', step:0, timer:null, timerSec:0, recognition:null, speaking:false, callHistory:[] };
+
 // ── 샘플 식사 ──
 const SAMPLES = [
   {label:'한식 밥상',desc:'쌀밥, 된장찌개, 고등어구이, 나물 3가지',img:'https://images.unsplash.com/photo-1547592180-85f173990554?w=200&q=80'},
@@ -2126,42 +2121,27 @@ function getMealTime(){
   if(h<10)return'breakfast';if(h<14)return'lunch';if(h<19)return'dinner';return'snack';
 }
 
+
 // ══════════════════════════════════════
 //  AI 전화 엔진 (TTS + STT)
 // ══════════════════════════════════════
 
-// AI 전화 유형별 초기 메시지
 const CALL_OPENERS = {
-  med:     (name,med) => `${name||'어르신'}, 안녕하세요! AI 손주예요 😊 ${med||'약'} 드실 시간인데, 혹시 오늘 약 드셨나요?`,
-  meal:    (name)     => `${name||'어르신'}, 좋은 아침이에요! AI 손주예요 😊 오늘 아침 식사는 하셨나요?`,
-  evening: (name)     => `${name||'어르신'}, 저녁이에요! AI 손주예요 😊 오늘 하루 어떻게 보내셨어요?`,
-  hello:   (name)     => `${name||'어르신'}, 안녕하세요! AI 손주예요 😊 오늘 건강하게 잘 지내고 계시죠?`,
+  med:     (n,m) => `${n||'어르신'}, 안녕하세요! AI 손주예요 😊 ${m||'약'} 드실 시간이에요. 오늘 약 드셨나요?`,
+  meal:    (n)   => `${n||'어르신'}, 좋은 아침이에요! AI 손주예요 😊 오늘 아침 식사는 하셨나요?`,
+  evening: (n)   => `${n||'어르신'}, 저녁이에요! AI 손주예요 😊 오늘 하루 어떻게 보내셨어요?`,
+  hello:   (n)   => `${n||'어르신'}, 안녕하세요! AI 손주예요 😊 오늘 건강하게 잘 지내고 계시죠?`,
 };
-const CALL_SYSTEM = (type) => `당신은 한국 어르신의 따뜻한 AI 손주입니다.
-지금 어르신에게 전화를 걸어 대화 중입니다.
-대화 유형: ${{med:'약 복용 확인', meal:'식사 확인', evening:'저녁 안부', hello:'일반 안부'}[type]||'안부'}.
-규칙:
-- 짧고 따뜻하게 1~2문장으로만 말하세요
-- 어르신 말씀에 공감하고 자연스럽게 대화를 이어가세요
-- 어르신이 힘들다고 하면 위로해 주세요
-- 대화는 3~4번 주고받은 후 따뜻하게 마무리하세요
-- 이모티콘 1개 포함`;
-// ── 전화 상태 ──
-let callState = { active:false, type:'', step:0, timer:null, timerSec:0, recognition:null, speaking:false, callHistory:[] };
-
-function showCallMenu(){ const m=document.getElementById('callMenu'); m.style.display=m.style.display==='flex'?'none':'flex'; }
-function hideCallMenu(){ document.getElementById('callMenu').style.display='none'; }
-document.addEventListener('click',e=>{ if(!e.target.closest('.test-call-btn')&&!e.target.closest('#callMenu')) hideCallMenu(); });
+const CALL_SUBTITLE = { med:'약 복용 확인', meal:'아침 식사 확인', evening:'저녁 안부', hello:'일반 안부' };
 
 // ── 전화 시작 (수신 화면) ──
 function startCall(type){
   if(callState.active) return;
   callState = { active:true, type, step:0, timer:null, timerSec:0, recognition:null, speaking:false, callHistory:[] };
-  const subtitleMap = { med:'약 복용 확인', meal:'아침 식사 확인', evening:'저녁 안부', hello:'일반 안부' };
   const overlay = document.getElementById('callOverlay');
   overlay.className = 'call-overlay ringing';
   document.getElementById('callStatus').textContent = '전화가 왔습니다...';
-  document.getElementById('callSubtitle').textContent = subtitleMap[type] || '안부 전화';
+  document.getElementById('callSubtitle').textContent = CALL_SUBTITLE[type]||'안부 전화';
   document.getElementById('callTimer').textContent = '';
   document.getElementById('callCaption').textContent = 'AI 손주에게서 전화가 왔어요 😊';
   document.getElementById('userCaption').classList.remove('show');
@@ -2171,397 +2151,246 @@ function startCall(type){
 }
 
 // ── 전화 받기 ──
+
+// ── 전화 받기 ──
 function answerCall(){
   stopRingtone();
   document.getElementById('callOverlay').className = 'call-overlay active';
   document.getElementById('callStatus').textContent = '통화 중';
   document.getElementById('answerBtn').style.display = 'none';
-
-  // 타이머 시작
   callState.timerSec = 0;
   callState.timer = setInterval(()=>{
     callState.timerSec++;
     const m=Math.floor(callState.timerSec/60), s=callState.timerSec%60;
-    document.getElementById('callTimer').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    document.getElementById('callTimer').textContent =
+      String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
   }, 1000);
-
-  // 첫 번째 AI 발화 시작
-  setTimeout(()=> runCallStep(), 800);
+  const name    = settings.userName || '';
+  const medName = (settings.meds&&settings.meds[0]) ? settings.meds[0].name : '약';
+  const opener  = CALL_OPENERS[callState.type];
+  const text    = opener ? opener(name, medName)
+                : (name||'어르신')+', 안녕하세요! AI 손주예요 😊';
+  callState.callHistory = [{ role:'assistant', content:text }];
+  callState.step = 1;
+  setCaption(text);
+  setWaveSilent(false);
+  // 사용자 제스처(answerCall) 안에서 직접 speak (setTimeout 없이)
+  ttsSpeak(text, ()=>{
+    setWaveSilent(true);
+    if(callState.active) callListen();
+  });
 }
 
-// ── AI 통화 대화 실행 ──
-async function runCallStep(){
-  // 최대 턴 수 초과 시 종료
-  if(callState.step >= 8){ endCall(); return; }
-
-  if(callState.step === 0){
-    // 첫 번째: AI 오프닝 멘트
-    const name = settings.userName || '';
-    const medName = (settings.meds&&settings.meds[0]) ? settings.meds[0].name : '약';
-    const opener = CALL_OPENERS[callState.type];
-    const text = opener ? opener(name, medName) : `${name||'어르신'}, 안녕하세요! AI 손주예요 😊`;
-    callState.callHistory = [{role:'ai', text}];
-    callState.step++;
-    setCaption(text);
-    setWaveSilent(false);
-    await speak(text);
-    setWaveSilent(true);
-    // 어르신 답변 대기
-    waitForUserAnswer();
+// ── 전화 끊기 ──
+function hangupCall(){
+  if(!callState.active &&
+     document.getElementById('callOverlay').className === 'call-overlay') return;
+  try{ if(callState.recognition){ callState.recognition.abort(); callState.recognition=null; }}catch(e){}
+  try{ window.speechSynthesis.cancel(); ttsCancelKeepAlive(); }catch(e){}
+  stopRingtone();
+  clearInterval(callState.timer);
+  const elapsed  = document.getElementById('callTimer').textContent || '0:00';
+  const prevType = callState.type;
+  callState = { active:false, type:'', step:0, timer:null, timerSec:0, recognition:null, speaking:false, callHistory:[] };
+  const ol = document.getElementById('callOverlay');
+  ol.className = 'call-overlay';
+  ol.style.display = 'none';
+  setTimeout(()=>{ ol.style.display=''; }, 50);
+  setWaveSilent(true);
+  document.getElementById('userCaption').classList.remove('show');
+  document.getElementById('answerBtn').style.display = 'flex';
+  if(prevType){
+    const lbl = CALL_SUBTITLE[prevType]||'안부 전화';
+    addAiBubble('📞 AI 전화 통화 완료 ('+lbl+')\n통화 시간: '+elapsed+'\n\n오늘도 건강하게 잘 지내세요! 궁금한 게 있으면 채팅으로 말씀해 주세요 😊');
   }
 }
 
-// 어르신 답변 대기
-function waitForUserAnswer(){
+function endCall(){ setTimeout(()=> hangupCall(), 1200); }
+
+// ── 어르신 음성 듣기 ──
+function callListen(){
   if(!callState.active) return;
   setCaption('말씀해 주세요... 👂');
   document.getElementById('userCaption').classList.add('show');
   document.getElementById('userCaptionText').textContent = '듣고 있어요...';
-
-  listenForAnswer({}, async (userText)=>{
-    if(!callState.active) return;
-    document.getElementById('userCaption').classList.remove('show');
-    document.getElementById('userCaptionText').textContent = '';
-
-    // 인식된 텍스트 표시
-    if(userText && userText !== 'yes' && userText !== 'no'){
-      document.getElementById('userCaptionText').textContent = `"${userText}"`;
-    }
-    callState.callHistory.push({role:'user', text: userText});
-    callState.step++;
-
-    // 마지막 턴이면 종료
-    if(callState.step >= 7){
-      const bye = `오늘도 건강하게 잘 지내세요! 손주가 항상 응원하고 있어요 😊`;
-      setCaption(bye);
-      setWaveSilent(false);
-      await speak(bye);
-      setWaveSilent(true);
-      setTimeout(()=>endCall(), 1000);
-      return;
-    }
-
-    // AI에게 다음 응답 요청
-    setCaption('...');
-    setWaveSilent(false);
-    try{
-      const aiText = await getCallAIResponse(userText);
-      callState.callHistory.push({role:'ai', text: aiText});
-      setCaption(aiText);
-      await speak(aiText);
-      setWaveSilent(true);
-      callState.step++;
-      // 다음 어르신 답변 대기
-      setTimeout(()=> waitForUserAnswer(), 400);
-    }catch(e){
-      // AI 호출 실패 시 기본 응답
-      const fallback = '그러시군요 😊 더 궁금한 게 있으시면 언제든지 말씀해 주세요!';
-      setCaption(fallback);
-      await speak(fallback);
-      setWaveSilent(true);
-      setTimeout(()=>endCall(), 1500);
-    }
-  });
-}
-
-// AI 응답 생성 (실제 API 호출)
-async function getCallAIResponse(userSaid){
-  const freshS = JSON.parse(localStorage.getItem('ai_settings')||'{}');
-  const provider = freshS.provider || settings.provider || 'claude';
-  const keyMap = {
-    claude:  freshS.claudeKey  || settings.claudeKey  || '',
-    chatgpt: freshS.chatgptKey || settings.chatgptKey || '',
-    gemini:  freshS.geminiKey  || settings.geminiKey  || '',
-  };
-  const apiKey = keyMap[provider] || '';
-  const sysPrompt = CALL_SYSTEM(callState.type);
-  // 대화 이력 구성
-  const msgs = callState.callHistory.map(m=>({
-    role: m.role==='ai'?'assistant':'user',
-    content: m.text
-  }));
-  msgs.push({role:'user', content: userSaid||'네'});
-
-  if(provider==='gemini' && apiKey){
-    const model = freshS.geminiModel || 'gemini-1.5-flash-latest';
-    const contents = msgs.map(m=>({
-      role: m.role==='assistant'?'model':'user',
-      parts:[{text:m.content}]
-    }));
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      { method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          system_instruction:{parts:[{text:sysPrompt}]},
-          contents,
-          generationConfig:{maxOutputTokens:100}
-        })
-      }
-    );
-    const d = await res.json();
-    if(d.error) throw new Error(d.error.message);
-    return d.candidates[0].content.parts[0].text.trim();
-  } else if(provider==='claude' && apiKey){
-    const res = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,
-        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:100,
-        system:sysPrompt, messages:msgs})
-    });
-    const d = await res.json();
-    if(d.error) throw new Error(d.error.message);
-    return d.content[0].text.trim();
-  } else {
-    // API 없으면 공감 응답
-    const empathy = ['그러시군요, 정말 다행이에요 😊','아이고, 많이 힘드셨겠어요 😊','오늘도 건강하게 지내셔서 기뻐요 😊'];
-    return empathy[Math.floor(Math.random()*empathy.length)];
-  }
-}
-
-// ── TTS 음성 발화 ──
-// Android speechSynthesis 15초 자동중단 방지 인터벌
-let _synthKeepAlive = null;
-function _startSynthKeepAlive(){
-  _stopSynthKeepAlive();
-  _synthKeepAlive = setInterval(()=>{
-    if(window.speechSynthesis.speaking){
-      window.speechSynthesis.pause();
-      window.speechSynthesis.resume();
-    }
-  }, 10000);
-}
-function _stopSynthKeepAlive(){
-  if(_synthKeepAlive){ clearInterval(_synthKeepAlive); _synthKeepAlive=null; }
-}
-
-// 음성 목록 로드 보장 (Android 비동기 문제 해결)
-function _getVoicesAsync(){
-  return new Promise(resolve=>{
-    let voices = window.speechSynthesis.getVoices();
-    if(voices.length > 0){ resolve(voices); return; }
-    // 아직 로드 안 됐으면 이벤트 대기
-    window.speechSynthesis.onvoiceschanged = ()=>{
-      voices = window.speechSynthesis.getVoices();
-      resolve(voices);
-    };
-    // 최대 1.5초 대기 후 강제 진행
-    setTimeout(()=> resolve(window.speechSynthesis.getVoices()), 1500);
-  });
-}
-
-function speak(text){
-  return new Promise(async resolve=>{
-    if(!('speechSynthesis' in window)){ resolve(); return; }
-    window.speechSynthesis.cancel();
-    await new Promise(r=>setTimeout(r, 100)); // cancel 후 짧은 대기
-
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.lang = 'ko-KR';
-    utt.rate = parseFloat(settings.callRate||'0.8');
-    utt.pitch = settings.callVoice==='male' ? 0.8 : 1.1;
-    utt.volume = 1.0;
-
-    // 음성 목록 비동기 로드 후 선택 (Android 핵심 수정)
-    const voices = await _getVoicesAsync();
-    const isMale = settings.callVoice==='male';
-    // 1순위: ko-KR 성별 맞는 목소리
-    const krVoice = voices.find(v=>
-      v.lang==='ko-KR' && (isMale
-        ? (v.name.includes('Male')||v.name.includes('남')||v.name.includes('male'))
-        : (!v.name.includes('Male')&&!v.name.includes('male')))
-    )
-    // 2순위: ko-KR 아무 목소리
-    || voices.find(v=> v.lang==='ko-KR')
-    // 3순위: ko 계열 목소리
-    || voices.find(v=> v.lang.startsWith('ko'))
-    // 4순위: 기기 기본 목소리 (완전 무음 방지 — 영어로라도 읽음)
-    || voices.find(v=> v.default)
-    || (voices.length > 0 ? voices[0] : null);
-
-    if(krVoice){
-      utt.voice = krVoice;
-      // 선택된 목소리가 한국어가 아니면 rate 조정
-      if(!krVoice.lang.startsWith('ko')) utt.rate = 0.7;
-    }
-    // 음성 없어도 자막은 항상 보이도록
-    setCaption(text);
-
-    let done = false;
-    utt.onend = ()=>{
-      if(done) return; done=true;
-      callState.speaking=false;
-      _stopSynthKeepAlive();
-      resolve();
-    };
-    utt.onerror = (e)=>{
-      if(done) return; done=true;
-      callState.speaking=false;
-      _stopSynthKeepAlive();
-      resolve(); // 오류여도 다음 단계 진행
-    };
-    callState.speaking = true;
-    _startSynthKeepAlive(); // Android 15초 버그 방지
-    window.speechSynthesis.speak(utt);
-    // 음성이 안 나오는 기기를 위해 자막 항상 표시
-    const captionEl = document.getElementById('callCaption');
-    if(captionEl) captionEl.textContent = text;
-
-    // 안전망: 텍스트 길이 기반 최대 대기시간 (음성이 끝났는데 onend 안 불리는 경우)
-    const maxMs = Math.max(8000, text.length * 300);
-    setTimeout(()=>{
-      if(!done){ done=true; callState.speaking=false; _stopSynthKeepAlive(); resolve(); }
-    }, maxMs);
-  });
-}
-
-// ── STT 음성 인식 ──
-function listenForAnswer(keywords, callback){
-  // Web Speech API 지원 여부 확인
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SpeechRecognition){
-    // STT 미지원 시 텍스트 입력 방식으로 전환
-    showCallTextInput(callback);
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){
+    document.getElementById('userCaptionText').textContent = '(음성 인식 미지원 환경)';
+    setTimeout(()=>{ if(callState.active) callRespond('네'); }, 5000);
     return;
   }
-
-  const rec = new SpeechRecognition();
+  const rec = new SR();
   rec.lang = 'ko-KR';
   rec.continuous = false;
   rec.interimResults = true;
   rec.maxAlternatives = 1;
   callState.recognition = rec;
-
-  rec.onresult = e=>{
-    const transcript = e.results[e.results.length-1][0].transcript;
-    document.getElementById('userCaptionText').textContent = transcript;
-
-    if(e.results[e.results.length-1].isFinal){
-      rec.stop();
-      const ans = classifyAnswer(transcript, keywords);
-      showToast(`"${transcript}" — ${ans==='yes'||ans==='good'?'긍정':'부정'}으로 인식`);
-      setTimeout(()=> callback(ans), 400);
-    }
+  let heard = '', silTimer = null;
+  rec.onresult = (ev)=>{
+    clearTimeout(silTimer);
+    const r = ev.results[ev.results.length-1];
+    const txt = r[0].transcript;
+    document.getElementById('userCaptionText').textContent = txt;
+    if(r.isFinal){ heard = txt; rec.stop(); }
+    else { silTimer = setTimeout(()=>{ try{ rec.stop(); }catch(e){} }, 2000); }
   };
-
-  rec.onerror = (e)=>{
-    // Android에서 network/not-allowed 오류 시 버튼으로 답변 선택
-    if(e.error==='not-allowed'){
-      document.getElementById('userCaptionText').textContent = '마이크 권한이 없어요. 버튼으로 답해주세요.';
-    } else {
-      document.getElementById('userCaptionText').textContent = '잘 못 들었어요. (자동으로 진행합니다)';
-    }
-    setTimeout(()=> callback('yes'), 2500);
+  rec.onend = ()=>{
+    clearTimeout(silTimer);
+    callState.recognition = null;
+    if(callState.active) callRespond(heard || '네');
   };
-
-  rec.onend = ()=>{ callState.recognition = null; };
-  rec.start();
-
-  // 8초 후 자동 종료
-  setTimeout(()=>{
-    if(callState.recognition){ rec.stop(); callback('yes'); }
-  }, 8000);
+  rec.onerror = (ev)=>{
+    clearTimeout(silTimer);
+    callState.recognition = null;
+    if(!callState.active) return;
+    if(ev.error === 'no-speech'){ setTimeout(()=>{ if(callState.active) callListen(); }, 300); }
+    else { callRespond('네'); }
+  };
+  try{ rec.start(); }catch(e){ callRespond('네'); }
+  setTimeout(()=>{ if(callState.recognition===rec){ try{ rec.stop(); }catch(e){} } }, 12000);
 }
 
-// ── 답변 분류 ──
-function classifyAnswer(text, keywords){
-  const t = text.toLowerCase();
-  for(const [ans, words] of Object.entries(keywords)){
-    if(words.some(w=> t.includes(w))) return ans;
-  }
-  return Object.keys(keywords)[0]; // 기본값: 첫 번째 키
-}
-
-// ── 전화 종료 ──
-function hangupCall(){
-  // 중복 호출 방지
-  if(!callState.active && document.getElementById('callOverlay').className === 'call-overlay') return;
-
-  // 음성 인식 즉시 중단
-  try{ if(callState.recognition){ callState.recognition.abort(); callState.recognition=null; } }catch(e){}
-  // TTS 즉시 중단
-  try{ window.speechSynthesis.cancel(); _stopSynthKeepAlive(); }catch(e){}
-  // 벨소리 중단
-  stopRingtone();
-  // 타이머 중단
-  clearInterval(callState.timer);
-
-  const elapsed = document.getElementById('callTimer').textContent || '0:00';
-  const prevType = callState.type;
-
-  // 상태 초기화
-  callState = { active:false, type:'', step:0, timer:null, timerSec:0, recognition:null, speaking:false, callHistory:[] };
-
-  // 오버레이 확실히 숨기기 (Android display:none 강제)
-  const overlay = document.getElementById('callOverlay');
-  overlay.className = 'call-overlay';
-  overlay.style.display = 'none';
-  setTimeout(()=>{ overlay.style.display = ''; }, 50); // CSS class로 복원
-
-  setWaveSilent(true);
+// ── AI 응답 후 발화 ──
+function callRespond(userSaid){
+  if(!callState.active) return;
   document.getElementById('userCaption').classList.remove('show');
-  document.getElementById('answerBtn').style.display = 'flex';
-
-  // 통화 내용 채팅에 요약
-  const typeLabel = { med:'약 복용 확인', meal:'아침 식사 확인', evening:'저녁 안부', hello:'일반 안부' };
-  if(prevType) addAiBubble(`📞 AI 전화 통화 완료 (${typeLabel[prevType]||'안부 전화'})\n통화 시간: ${elapsed}\n\n오늘도 건강하게 잘 지내세요! 궁금한 게 있으면 언제든지 채팅으로 말씀해 주세요 😊`);
-}
-
-function endCall(){
-  setTimeout(()=> hangupCall(), 1500);
-}
-
-// 음성 미지원 시 텍스트 입력 표시
-let _callTextCallback = null;
-function showCallTextInput(callback){
-  _callTextCallback = callback;
-  const el = document.getElementById('callTextInput');
-  if(el) el.style.display = 'block';
-  const box = document.getElementById('callTextBox');
-  if(box){ box.value=''; box.focus(); }
-  document.getElementById('userCaptionText').textContent = '아래 입력창에 답변을 입력하세요 ⌨️';
-}
-
-function submitCallText(){
-  const box = document.getElementById('callTextBox');
-  const text = box ? box.value.trim() : '';
-  if(!text) return;
-  const el = document.getElementById('callTextInput');
-  if(el) el.style.display = 'none';
-  document.getElementById('userCaptionText').textContent = '"'+text+'"';
-  if(_callTextCallback){ _callTextCallback(text); _callTextCallback=null; }
-}
-
-// ── 자막 설정 ──
-function setCaption(text){ document.getElementById('callCaption').textContent = text; }
-
-// ── 파형 애니메이션 ──
-function setWaveSilent(silent){
-  document.querySelectorAll('.wave-bar').forEach(b=>{
-    b.classList.toggle('silent', silent);
+  callState.callHistory.push({ role:'user', content: userSaid });
+  callState.step++;
+  if(callState.step >= 9){
+    const bye = '오늘도 건강하게 잘 지내세요! 손주가 항상 응원하고 있어요 😊';
+    setCaption(bye);
+    setWaveSilent(false);
+    ttsSpeak(bye, ()=>{ setWaveSilent(true); endCall(); });
+    return;
+  }
+  setCaption('...');
+  setWaveSilent(false);
+  callFetchAI(userSaid).then(reply=>{
+    if(!callState.active) return;
+    callState.callHistory.push({ role:'assistant', content: reply });
+    setCaption(reply);
+    ttsSpeak(reply, ()=>{
+      setWaveSilent(true);
+      if(callState.active) setTimeout(()=> callListen(), 400);
+    });
+  }).catch(()=>{
+    if(!callState.active) return;
+    const fb = ['그러시군요! 정말 잘 하셨어요 😊','오늘도 건강하게 지내세요 😊','언제든지 응원하고 있어요 😊'];
+    const r = fb[callState.step % 3];
+    setCaption(r);
+    ttsSpeak(r, ()=>{ setWaveSilent(true); endCall(); });
   });
 }
 
-// ── 벨소리 (AudioContext) ──
+// ── AI API 호출 ──
+async function callFetchAI(userSaid){
+  const fs  = JSON.parse(localStorage.getItem('ai_settings')||'{}');
+  const prov = fs.provider || settings.provider || 'claude';
+  const keys = {
+    claude:  fs.claudeKey  || settings.claudeKey  || '',
+    chatgpt: fs.chatgptKey || settings.chatgptKey || '',
+    gemini:  fs.geminiKey  || settings.geminiKey  || '',
+  };
+  const key = keys[prov] || '';
+  const sys = '당신은 한국 어르신의 따뜻한 AI 손주입니다. 지금 전화 통화 중입니다.\n대화 주제: '+(CALL_SUBTITLE[callState.type]||'안부')+'\n규칙: 반드시 1~2문장. 따뜻하고 공감하는 말투. 이모티콘 1개.';
+  const msgs = callState.callHistory.slice(-4).concat([{ role:'user', content: userSaid }]);
+  if(prov==='gemini' && key){
+    const model = fs.geminiModel || 'gemini-1.5-flash-latest';
+    const contents = msgs.map(m=>({ role:m.role==='assistant'?'model':'user', parts:[{text:m.content}] }));
+    const r = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+key,
+      { method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ system_instruction:{parts:[{text:sys}]}, contents, generationConfig:{maxOutputTokens:80} }) }
+    );
+    const d = await r.json();
+    if(d.error) throw new Error(d.error.message);
+    return d.candidates[0].content.parts[0].text.trim();
+  }
+  if(prov==='claude' && key){
+    const r = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,
+        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:80, system:sys, messages:msgs })
+    });
+    const d = await r.json();
+    if(d.error) throw new Error(d.error.message);
+    return d.content[0].text.trim();
+  }
+  const def = ['그러시군요 😊 오늘도 건강하게 지내세요!','정말 잘 하셨어요! 대견해요 😊','언제든지 응원해요 😊'];
+  return def[Math.floor(Math.random()*3)];
+}
+
+// ── TTS 콜백 방식 (Android 제스처 정책 대응) ──
+let _ttsKeepAlive = null;
+function ttsCancelKeepAlive(){
+  if(_ttsKeepAlive){ clearInterval(_ttsKeepAlive); _ttsKeepAlive=null; }
+}
+function _startSynthKeepAlive(){
+  ttsCancelKeepAlive();
+  _ttsKeepAlive = setInterval(()=>{
+    if(window.speechSynthesis.speaking){ window.speechSynthesis.pause(); window.speechSynthesis.resume(); }
+  }, 10000);
+}
+function _stopSynthKeepAlive(){ ttsCancelKeepAlive(); }
+
+function ttsSpeak(text, onDone){
+  if(!('speechSynthesis' in window)){ if(onDone) onDone(); return; }
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang   = 'ko-KR';
+  utt.rate   = parseFloat(settings.callRate||'0.85');
+  utt.pitch  = settings.callVoice==='male' ? 0.8 : 1.1;
+  utt.volume = 1.0;
+  const voices = window.speechSynthesis.getVoices();
+  if(voices.length > 0){
+    const ko = voices.find(v=> v.lang==='ko-KR'||v.lang==='ko_KR')
+            || voices.find(v=> v.lang.startsWith('ko'))
+            || voices.find(v=> v.default)
+            || voices[0];
+    if(ko) utt.voice = ko;
+  }
+  let done = false;
+  const finish = ()=>{ if(!done){ done=true; ttsCancelKeepAlive(); callState.speaking=false; if(onDone) onDone(); } };
+  utt.onend   = finish;
+  utt.onerror = finish;
+  setTimeout(finish, Math.max(5000, text.length*180));
+  callState.speaking = true;
+  _startSynthKeepAlive();
+  window.speechSynthesis.speak(utt);
+}
+
+function speakText(text){
+  return new Promise(resolve=>{ ttsSpeak(text, resolve); });
+}
+
+
+
+// ── 자막 / 파형 / 벨소리 ──
+function setCaption(text){
+  document.getElementById('callCaption').textContent = text;
+}
+function setWaveSilent(silent){
+  document.querySelectorAll('.wave-bar').forEach(b=> b.classList.toggle('silent', silent));
+}
 let ringtoneInterval = null;
 function playRingtone(){
   if(!('AudioContext' in window||'webkitAudioContext' in window)) return;
   const AC = window.AudioContext||window.webkitAudioContext;
-  const playBeep = ()=>{
+  const beep = ()=>{
     try{
       const ctx = new AC();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = 440;
-      osc.type = 'sine';
+      osc.frequency.value = 440; osc.type='sine';
       gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.4);
-      osc.start(); osc.stop(ctx.currentTime+0.4);
-    } catch(e){}
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.5);
+      osc.start(); osc.stop(ctx.currentTime+0.5);
+    }catch(e){}
   };
-  playBeep();
-  ringtoneInterval = setInterval(playBeep, 1800);
+  beep();
+  ringtoneInterval = setInterval(beep, 1500);
 }
 function stopRingtone(){
   if(ringtoneInterval){ clearInterval(ringtoneInterval); ringtoneInterval=null; }
@@ -2572,27 +2401,30 @@ function checkAutoCall(){
   const n = settings.notify||{};
   const now = new Date();
   const hm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-
-  // 아침 식사 확인 (8:00)
-  if(n.callMeal && hm==='08:00' && !callState.active){
-    startCall('meal');
-  }
-  // 저녁 안부 (18:00)
-  if(n.callEvening && hm==='18:00' && !callState.active){
-    startCall('evening');
-  }
-  // 약 복용 확인
+  if(n.callMeal && hm==='08:00' && !callState.active) startCall('meal');
+  if(n.callEvening && hm==='18:00' && !callState.active) startCall('evening');
   if(n.callMed){
-    const meds = settings.meds||[];
-    meds.forEach(m=>{
-      if(m.alarmTime===hm && !callState.active){
-        callState._currentMed = m;
-        startCall('med');
-      }
+    (settings.meds||[]).forEach(m=>{
+      if(m.alarmTime===hm && !callState.active){ callState._currentMed=m; startCall('med'); }
     });
   }
 }
 setInterval(checkAutoCall, 30000);
+
+// ── 전화 테스트 메뉴 ──
+function showCallMenu(){
+  const m = document.getElementById('callMenu');
+  if(m) m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
+}
+function hideCallMenu(){
+  const m = document.getElementById('callMenu');
+  if(m) m.style.display = 'none';
+}
+document.addEventListener('click', e => {
+  if(!e.target.closest('.test-call-btn') && !e.target.closest('#callMenu')) hideCallMenu();
+});
+
+
 
 
 // ══════════════════════════════════════
